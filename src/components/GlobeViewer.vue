@@ -1,17 +1,10 @@
 <script>
 import * as Cesium from 'cesium'
-import {
-  aggregateBounds, buildScale, buildFlightEntityGroups,
-} from '../render/flightEntities.js'
+import {aggregateBounds, buildScale, FlightLayer} from '../render/flightRender.js'
 
 
-// Always-on groups (not toggleable from the UI).
-const ALWAYS_ON = ['track', 'task']
-
-// UI flag → group name. Names match flightEntities.buildFlightEntityGroups
-// keys.
+// UI flag → entity-group name on the FlightLayer.
 const TOGGLE_MAP = {
-  showShadow:        'shadow',
   showAltitudeMarks: 'altitudeMarks',
   showTimeMarks:     'timeMarks',
   showThermals:      'thermals',
@@ -35,19 +28,20 @@ export default {
 
   data() {
     return {
-      viewer:        null,
-      // flight id → group name → entity[]
-      flightGroups:  new Map(),
-      hoverEntity:   null,
+      viewer:      null,
+      layers:      new Map(),  // flight id → FlightLayer
+      hoverEntity: null,
     }
   },
 
   mounted() {
     Cesium.Ion.defaultAccessToken = ''
     this.viewer = new Cesium.Viewer(this.$refs.container, {
-      imageryProvider: new Cesium.OpenStreetMapImageryProvider({
-        url: 'https://tile.openstreetmap.org/',
-      }),
+      baseLayer: new Cesium.ImageryLayer(new Cesium.UrlTemplateImageryProvider({
+        url:          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
+        credit:       'OpenStreetMap',
+        maximumLevel: 19,
+      })),
       baseLayerPicker:      false,
       geocoder:             false,
       homeButton:           false,
@@ -59,7 +53,7 @@ export default {
       infoBox:              false,
       selectionIndicator:   false,
     })
-    this.rebuild()
+    this.syncFlights()
   },
 
   beforeUnmount() {
@@ -67,29 +61,33 @@ export default {
   },
 
   watch: {
-    flights:          {handler: 'rebuild', deep: false},
-    selectedColoring: 'rebuild',
-    showShadow:       'syncVisibility',
-    showAltitudeMarks:'syncVisibility',
-    showTimeMarks:    'syncVisibility',
-    showThermals:     'syncVisibility',
-    showGlides:       'syncVisibility',
-    showDives:        'syncVisibility',
-    hoverTime:        'syncHover',
+    flights:           {handler: 'syncFlights', deep: false},
+    selectedColoring:  'rebuildTracks',
+    showShadow:        'syncVisibility',
+    showAltitudeMarks: 'syncVisibility',
+    showTimeMarks:     'syncVisibility',
+    showThermals:      'syncVisibility',
+    showGlides:        'syncVisibility',
+    showDives:         'syncVisibility',
+    hoverTime:         'syncHover',
   },
 
   methods: {
-    rebuild() {
+    // Add layers for new flights, drop layers for removed ones, fly to new
+    // layers on first add.
+    syncFlights() {
       if (!this.viewer) return
 
-      // Drop everything we placed.
-      for (const groups of this.flightGroups.values())
-        for (const ents of Object.values(groups))
-          for (const e of ents) this.viewer.entities.remove(e)
-      this.flightGroups.clear()
-      if (!this.flights.length) {this.syncHover(); return}
+      const present = new Set(this.flights.map(f => f.id))
+      let added = []
 
-      // Build new entity groups for each flight.
+      for (const id of [...this.layers.keys()])
+        if (!present.has(id)) {
+          this.layers.get(id).detach(this.viewer)
+          this.layers.delete(id)
+        }
+
+      // Recompute scales whenever the set of flights changes.
       const bounds = aggregateBounds(this.flights)
       const scales = {
         climb:    buildScale('climb',    bounds),
@@ -99,33 +97,50 @@ export default {
         time:     buildScale('time',     bounds),
       }
 
+      // For existing layers we leave their (older) scales — they were
+      // computed for the old aggregate. Rebuilding the track picks up
+      // the new aggregate. Since selectedColoring is shared, just rebuild.
       for (const f of this.flights) {
-        const groups = buildFlightEntityGroups(
-          f, this.selectedColoring, scales)
-        this.flightGroups.set(f.id, groups)
-        for (const e of Object.values(groups).flat())
-          this.viewer.entities.add(e)
+        let layer = this.layers.get(f.id)
+        if (!layer) {
+          layer = new FlightLayer(f, scales, this.selectedColoring)
+          this.layers.set(f.id, layer)
+          layer.attach(this.viewer)
+          added.push(layer)
+        } else {
+          layer.scales = scales
+          layer.rebuildTrack(this.viewer, this.selectedColoring)
+        }
       }
 
       this.syncVisibility()
       this.syncHover()
-      this.viewer.zoomTo(this.viewer.entities)
+      if (added.length) this.flyToLayers(added)
     },
 
-    // Toggle the show flag on each group entity based on UI state. We
-    // don't rebuild — entities just hide/show.
+    // Coloring change: keep all layers, swap each one's track collection.
+    rebuildTracks() {
+      if (!this.viewer) return
+      for (const layer of this.layers.values())
+        layer.rebuildTrack(this.viewer, this.selectedColoring)
+    },
+
+    // Toggle visibility of optional groups based on the UI flags.
     syncVisibility() {
-      for (const groups of this.flightGroups.values())
-        for (const [groupName, ents] of Object.entries(groups)) {
-          const visible = ALWAYS_ON.includes(groupName) || this.isVisible(groupName)
-          for (const e of ents) e.show = visible
-        }
+      for (const layer of this.layers.values()) {
+        layer.setShadowVisible(this.showShadow)
+        for (const [flag, group] of Object.entries(TOGGLE_MAP))
+          layer.setEntityGroupVisible(group, this[flag])
+      }
     },
 
-    isVisible(groupName) {
-      for (const [flag, target] of Object.entries(TOGGLE_MAP))
-        if (target == groupName) return this[flag]
-      return true
+    // Fly to the union of bounding spheres of the given layers.
+    flyToLayers(layers) {
+      if (!layers.length) return
+      const spheres = layers.map(l => l.boundingSphere())
+      const union = spheres.reduce(
+        (acc, s) => Cesium.BoundingSphere.union(acc, s), spheres[0])
+      this.viewer.camera.flyToBoundingSphere(union, {duration: 1.0})
     },
 
     syncHover() {
@@ -135,8 +150,7 @@ export default {
       }
       if (this.hoverTime == null || !this.flights.length) return
       const dt = new Date(this.hoverTime * 1000)
-      // Place a crosshair at the first flight's interpolated position.
-      const c = this.flights[0].track.coordAt(dt)
+      const c  = this.flights[0].track.coordAt(dt)
       this.hoverEntity = this.viewer.entities.add({
         position: Cesium.Cartesian3.fromDegrees(c.lonDeg, c.latDeg, c.ele),
         point: {
