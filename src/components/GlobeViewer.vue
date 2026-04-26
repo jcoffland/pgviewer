@@ -35,7 +35,9 @@ export default {
 
   mounted() {
     this.viewer = new Cesium.Viewer(this.$refs.container, {
-      baseLayer:            Cesium.ImageryLayer.fromWorldImagery(),
+      baseLayer: Cesium.ImageryLayer.fromWorldImagery({
+        maximumAnisotropy: Number.POSITIVE_INFINITY,  // GPU max
+      }),
       terrain:              Cesium.Terrain.fromWorldTerrain(),
       baseLayerPicker:      false,
       geocoder:             false,
@@ -48,8 +50,10 @@ export default {
       infoBox:              false,
       selectionIndicator:   false,
     })
-    this.viewer.scene.globe.maximumScreenSpaceError = 16
-    this.viewer.scene.globe.tileCacheSize           = 1000
+    this.viewer.scene.globe.maximumScreenSpaceError = 0.5
+    this.viewer.scene.globe.tileCacheSize           = 10000
+    this.viewer.scene.globe.preloadAncestors        = true
+    this.viewer.scene.globe.preloadSiblings         = true
     this.syncFlights()
   },
 
