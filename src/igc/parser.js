@@ -1,0 +1,112 @@
+// IGC file parser. Reads B (track), C (waypoint), and HFDTE/H header
+// records; ignores the rest.
+
+import {Coord} from './coord.js'
+import {Track} from './track.js'
+
+
+const B_RE = /^B(\d{2})(\d{2})(\d{2})(\d{2})(\d{5})([NS])(\d{3})(\d{5})([EW])([AV])(\d{5}|-\d{4})(\d{5}|-\d{4}).*$/
+// C task header: C followed by 10 two-digit groups (date+time+task num+nTPs)
+const C1_RE = /^C(?:\d{2}){10}\w{4}.*$/
+const C2_RE = /^C(\d{2})(\d{5})([NS])(\d{3})(\d{5})([EW])(.*)$/
+const HFDTE_RE = /^HFDTE(?:DATE:)?(\d\d)(\d\d)(\d\d)(?:,\d\d)?$/
+const H_RE = /^H[FOP]([0-9A-Z]{3}).*?:(.*)$/
+const NOT_SET_RE = /^\s*(not\s+set|n\/?a)?\s*$/i
+
+
+// Public.
+// Parse the full text of an IGC file and return a Track.
+// `filename` is preserved on the Track for display.
+export const parseIgc = (text, filename = null) => {
+  const state = {b: [], c: [], h: {}, date: null, errors: []}
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.trimEnd()
+    if (!line.length) continue
+    try {
+      switch (line[0]) {
+        case 'B': parseB(line, state); break
+        case 'C': parseC(line, state); break
+        case 'H': parseH(line, state); break
+      }
+    } catch (e) {
+      state.errors.push({line, msg: e.message})
+    }
+  }
+
+  if (!state.b.length) throw new Error('no B records in IGC file')
+
+  // Prefer GPS altitude (ele) over pressure altitude (alt) when present.
+  const useEle = state.b.some(b => b.ele != 0)
+  const coords = state.b.map(b =>
+    Coord.deg(b.lat, b.lon, useEle ? b.ele : b.alt, b.dt))
+
+  const opts = {filename}
+  for (const [k, attr] of [['plt', 'pilotName'],
+                            ['gty', 'gliderType'],
+                            ['gid', 'gliderId']]) {
+    const v = state.h[k]
+    if (v && !NOT_SET_RE.test(v)) opts[attr] = v.trim()
+  }
+
+  if (state.c.length) {
+    const tps = state.c.map(c => ({
+      name:   c.name,
+      coord:  Coord.deg(c.lat, c.lon, 0),
+      radius: 0,
+    }))
+    opts.declaration = {name: 'Declaration', tps}
+  }
+
+  return new Track(coords, opts)
+}
+
+
+const parseB = (line, state) => {
+  const m = line.match(B_RE)
+  if (!m) throw new Error('bad B record')
+  if (!state.date) throw new Error('B record before HFDTE')
+  const hh = +m[1], mm = +m[2], ss = +m[3]
+  const d = state.date
+  let dt = new Date(Date.UTC(
+    d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate(), hh, mm, ss))
+  // Roll over to next day if time goes backwards (multi-day flight).
+  if (state.b.length && dt < state.b[state.b.length - 1].dt) {
+    state.date = new Date(d.getTime() + 86400 * 1000)
+    dt = new Date(Date.UTC(
+      state.date.getUTCFullYear(),
+      state.date.getUTCMonth(),
+      state.date.getUTCDate(), hh, mm, ss))
+  }
+
+  let lat = +m[4] + +m[5] / 60000
+  if (m[6] == 'S') lat = -lat
+  let lon = +m[7] + +m[8] / 60000
+  if (m[9] == 'W') lon = -lon
+
+  state.b.push({dt, lat, lon, alt: +m[11], ele: +m[12]})
+}
+
+
+const parseC = (line, state) => {
+  if (C1_RE.test(line)) return  // task header line; ignored
+  const m = line.match(C2_RE)
+  if (!m) throw new Error('bad C record')
+  let lat = +m[1] + +m[2] / 60000
+  if (m[3] == 'S') lat = -lat
+  let lon = +m[4] + +m[5] / 60000
+  if (m[6] == 'W') lon = -lon
+  if (lat == 0 && lon == 0) return
+  state.c.push({lat, lon, name: m[7]})
+}
+
+
+const parseH = (line, state) => {
+  const dm = line.match(HFDTE_RE)
+  if (dm) {
+    const day = +dm[1], month = +dm[2], year = +dm[3]
+    state.date = new Date(Date.UTC(2000 + year, month - 1, day))
+    return
+  }
+  const m = line.match(H_RE)
+  if (m) state.h[m[1].toLowerCase()] = m[2]
+}
