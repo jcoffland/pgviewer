@@ -1,4 +1,7 @@
 <script>
+import FileDropzone from './FileDropzone.vue'
+
+
 const COLORINGS = [
   {key: 'climb',       label: 'Climb',        needsEle: true},
   {key: 'altitude',    label: 'Altitude',     needsEle: true},
@@ -10,6 +13,8 @@ const COLORINGS = [
 
 
 export default {
+  components: {FileDropzone},
+
   props: {
     flights:           {type: Array, required: true},
     showShadow:        Boolean,
@@ -18,6 +23,9 @@ export default {
     showThermals:      Boolean,
     showGlides:        Boolean,
     showDives:         Boolean,
+    collapsed:         Boolean,
+    isFullscreen:      Boolean,
+    parseErrors:       {type: Array, default: () => []},
   },
 
   emits: [
@@ -28,7 +36,10 @@ export default {
     'update:showGlides',
     'update:showDives',
     'update:coloring',
+    'update:collapsed',
+    'toggle-fullscreen',
     'remove',
+    'files',
   ],
 
   data() {
@@ -46,69 +57,144 @@ export default {
 
 
 <template lang="pug">
-.track-controls
-  section
-    h3 Layers
-    .options
-      label.option
-        input(
-          type='checkbox',
-          :checked='showShadow',
-          @change='$emit("update:showShadow", $event.target.checked)')
-        | Shadow
-      label.option
-        input(
-          type='checkbox',
-          :checked='showAltitudeMarks',
-          @change='$emit("update:showAltitudeMarks", $event.target.checked)')
-        | Altitude marks
-      label.option
-        input(
-          type='checkbox',
-          :checked='showTimeMarks',
-          @change='$emit("update:showTimeMarks", $event.target.checked)')
-        | Time marks
+.track-controls(:class='{collapsed}')
+  .strip(v-if='collapsed', @click='$emit("update:collapsed", false)')
+    button.icon(title='Expand') ›
+  template(v-else)
+    .header
+      .title PG Viewer
+      button.icon(:title='isFullscreen ? "Exit fullscreen" : "Fullscreen"', @click='$emit("toggle-fullscreen")')
+        | {{ isFullscreen ? '⇲' : '⛶' }}
+      button.icon(title='Collapse', @click='$emit("update:collapsed", true)') ‹
 
-  section
-    h3 Analysis
-    .options
-      label.option
-        input(
-          type='checkbox',
-          :checked='showThermals',
-          @change='$emit("update:showThermals", $event.target.checked)')
-        | Thermals
-      label.option
-        input(
-          type='checkbox',
-          :checked='showGlides',
-          @change='$emit("update:showGlides", $event.target.checked)')
-        | Glides
-      label.option
-        input(
-          type='checkbox',
-          :checked='showDives',
-          @change='$emit("update:showDives", $event.target.checked)')
-        | Dives
+    .body
+      section
+        h3 Files
+        file-dropzone(@files='$emit("files", $event)')
+        .errors(v-if='parseErrors.length')
+          .error(v-for='e in parseErrors', :key='e.name')
+            | {{ e.name }}: {{ e.msg }}
 
-  section(v-if='flights.length')
-    h3 Flights
-    .flight(v-for='f in flights', :key='f.id')
-      .row
-        .swatch(:style='{background: f.color}')
-        .name {{ f.track.filename }}
-        button(@click='$emit("remove", f.id)') ×
-      select(
-        :value='f.coloringKey',
-        @change='$emit("update:coloring", {id: f.id, key: $event.target.value})')
-        option(v-for='c in coloringsFor(f)', :key='c.key', :value='c.key')
-          | {{ c.label }}
+      section
+        h3 Layers
+        .options
+          label.option
+            input(
+              type='checkbox',
+              :checked='showShadow',
+              @change='$emit("update:showShadow", $event.target.checked)')
+            | Shadow
+          label.option
+            input(
+              type='checkbox',
+              :checked='showAltitudeMarks',
+              @change='$emit("update:showAltitudeMarks", $event.target.checked)')
+            | Altitude marks
+          label.option
+            input(
+              type='checkbox',
+              :checked='showTimeMarks',
+              @change='$emit("update:showTimeMarks", $event.target.checked)')
+            | Time marks
+
+      section
+        h3 Analysis
+        .options
+          label.option
+            input(
+              type='checkbox',
+              :checked='showThermals',
+              @change='$emit("update:showThermals", $event.target.checked)')
+            | Thermals
+          label.option
+            input(
+              type='checkbox',
+              :checked='showGlides',
+              @change='$emit("update:showGlides", $event.target.checked)')
+            | Glides
+          label.option
+            input(
+              type='checkbox',
+              :checked='showDives',
+              @change='$emit("update:showDives", $event.target.checked)')
+            | Dives
+
+      section(v-if='flights.length')
+        h3 Flights
+        .flight(v-for='f in flights', :key='f.id')
+          .row
+            .swatch(:style='{background: f.color}')
+            .name {{ f.track.filename }}
+            button(@click='$emit("remove", f.id)') ×
+          select(
+            :value='f.coloringKey',
+            @change='$emit("update:coloring", {id: f.id, key: $event.target.value})')
+            option(v-for='c in coloringsFor(f)', :key='c.key', :value='c.key')
+              | {{ c.label }}
 </template>
 
 
 <style lang="stylus">
 .track-controls
-  padding 12px
+  width 240px
+  background #1f1f1f
+  border-right 1px solid #333
+  flex-shrink 0
+  display flex
+  flex-direction column
+  min-height 0
+
+  &.collapsed
+    width 24px
+
+  .strip
+    flex 1
+    display flex
+    align-items flex-start
+    justify-content center
+    padding-top 8px
+    cursor pointer
+
+    &:hover
+      background #2a2a2a
+
+  .header
+    display flex
+    align-items center
+    gap 4px
+    padding 8px 8px 8px 12px
+    border-bottom 1px solid #333
+    flex-shrink 0
+
+    .title
+      flex 1
+      font-weight 600
+      font-size 14px
+
+  .body
+    flex 1
+    overflow-y auto
+    padding 12px
+
+  .errors
+    margin-top 6px
+    color #f88
+    font-size 12px
+
+    .error
+      margin-top 2px
+
+  button.icon
+    background transparent
+    border 1px solid transparent
+    padding 2px 6px
+    font-size 14px
+    line-height 1
+    color #aaa
+
+    &:hover
+      background #333
+      color #eee
 
   section
     margin-bottom 16px

@@ -5,10 +5,11 @@ import 'uplot/dist/uPlot.min.css'
 
 export default {
   props: {
-    flights: {type: Array, required: true},
+    flights:   {type: Array, required: true},
+    collapsed: Boolean,
   },
 
-  emits: ['hover'],
+  emits: ['hover', 'update:collapsed'],
 
   data() {
     return {plot: null, ro: null}
@@ -26,13 +27,14 @@ export default {
   },
 
   watch: {
-    flights: 'build',
+    flights:   'build',
+    collapsed(v) {if (!v) this.$nextTick(() => this.build())},
   },
 
   methods: {
     build() {
       if (this.plot) {this.plot.destroy(); this.plot = null}
-      if (!this.flights.length) return
+      if (this.collapsed || !this.flights.length) return
 
       const series = [
         {label: 'time'},
@@ -47,6 +49,7 @@ export default {
 
       const data = this.buildData()
       const {clientWidth, clientHeight} = this.$refs.container
+      if (clientWidth <= 0 || clientHeight <= 0) return
 
       const opts = {
         width:  clientWidth,
@@ -104,6 +107,7 @@ export default {
     layout() {
       if (!this.plot) return
       const {clientWidth, clientHeight} = this.$refs.container
+      if (clientWidth <= 0 || clientHeight <= 0) return
       this.plot.setSize({width: clientWidth, height: clientHeight})
     },
   },
@@ -112,17 +116,55 @@ export default {
 
 
 <template lang="pug">
-.altitude-chart
-  .empty(v-if='!flights.length') Altitude graph
-  .container(ref='container')
+.altitude-chart(:class='{collapsed}')
+  .header
+    .label Altitude
+    button.icon(
+      :title='collapsed ? "Expand" : "Collapse"',
+      @click='$emit("update:collapsed", !collapsed)')
+      | {{ collapsed ? '▴' : '▾' }}
+  .body
+    .empty(v-if='!flights.length') No flights loaded
+    .container(ref='container')
 </template>
 
 
 <style lang="stylus">
 .altitude-chart
-  position relative
-  height 100%
-  width 100%
+  display flex
+  flex-direction column
+  background #181818
+  border-top 1px solid #333
+  flex-shrink 0
+  height 220px
+
+  &.collapsed
+    height 24px
+
+    .body
+      display none
+
+  .header
+    display flex
+    align-items center
+    gap 4px
+    padding 2px 8px
+    background #1f1f1f
+    border-bottom 1px solid #333
+    flex-shrink 0
+    height 24px
+
+    .label
+      flex 1
+      font-size 11px
+      text-transform uppercase
+      letter-spacing 0.5px
+      color #888
+
+  .body
+    flex 1
+    position relative
+    min-height 0
 
   .container
     position absolute
@@ -138,7 +180,20 @@ export default {
     font-size 12px
     pointer-events none
 
-  // Tone uPlot's defaults to fit the dark theme.
+  button.icon
+    background transparent
+    border 1px solid transparent
+    padding 2px 6px
+    font-size 12px
+    line-height 1
+    color #aaa
+    cursor pointer
+
+    &:hover
+      background #333
+      color #eee
+
+  // uPlot dark theme.
   .u-legend
     color #ccc
 

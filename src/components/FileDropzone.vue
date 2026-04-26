@@ -45,13 +45,15 @@ label.dropzone(
 
 <style lang="stylus">
 .dropzone
-  display inline-flex
+  display flex
   align-items center
-  padding 6px 12px
+  justify-content center
+  padding 12px
   border 1px dashed #555
   border-radius 4px
   cursor pointer
-  font-size 13px
+  font-size 12px
+  text-align center
 
   &:hover, &.dragging
     background #2a3a4a

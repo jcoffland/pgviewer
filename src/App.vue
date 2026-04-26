@@ -1,12 +1,11 @@
 <script>
-import FileDropzone   from './components/FileDropzone.vue'
 import GlobeViewer    from './components/GlobeViewer.vue'
 import AltitudeChart  from './components/AltitudeChart.vue'
 import TrackControls  from './components/TrackControls.vue'
 import {parseIgc}     from './igc/index.js'
 
 
-// KML aabbggrr palette for multi-flight color cycle.
+// Per-flight color cycle.
 const FLIGHT_COLORS = [
   '#ff0000', '#00ff00', '#0000ff',
   '#ffff00', '#ff00ff', '#00ffff',
@@ -14,7 +13,7 @@ const FLIGHT_COLORS = [
 
 
 export default {
-  components: {FileDropzone, GlobeViewer, AltitudeChart, TrackControls},
+  components: {GlobeViewer, AltitudeChart, TrackControls},
 
   data() {
     return {
@@ -27,7 +26,18 @@ export default {
       showDives:        false,
       hoverTime:        null,    // unix seconds; chart→viewer cursor sync
       parseErrors:      [],
+      collapsedSide:    false,
+      collapsedChart:   false,
+      isFullscreen:     false,
     }
+  },
+
+  mounted() {
+    document.addEventListener('fullscreenchange', this.onFullscreenChange)
+  },
+
+  beforeUnmount() {
+    document.removeEventListener('fullscreenchange', this.onFullscreenChange)
   },
 
   methods: {
@@ -61,6 +71,15 @@ export default {
     nextId() {
       return this.flights.reduce((m, f) => m < f.id ? f.id : m, 0) + 1
     },
+
+    toggleFullscreen() {
+      if (document.fullscreenElement) document.exitFullscreen()
+      else document.documentElement.requestFullscreen()
+    },
+
+    onFullscreenChange() {
+      this.isFullscreen = !!document.fullscreenElement
+    },
   },
 }
 </script>
@@ -68,13 +87,6 @@ export default {
 
 <template lang="pug">
 .app
-  .top-bar
-    .title IGC Viewer
-    file-dropzone(@files='addFiles')
-    .errors(v-if='parseErrors.length')
-      .error(v-for='e in parseErrors', :key='e.name')
-        | {{ e.name }}: {{ e.msg }}
-
   .main
     track-controls.controls(
       :flights='flights',
@@ -84,6 +96,10 @@ export default {
       :show-thermals='showThermals',
       :show-glides='showGlides',
       :show-dives='showDives',
+      :collapsed='collapsedSide',
+      :is-fullscreen='isFullscreen',
+      :parse-errors='parseErrors',
+      @files='addFiles',
       @update:show-shadow='showShadow = $event',
       @update:show-altitude-marks='showAltitudeMarks = $event',
       @update:show-time-marks='showTimeMarks = $event',
@@ -91,6 +107,8 @@ export default {
       @update:show-glides='showGlides = $event',
       @update:show-dives='showDives = $event',
       @update:coloring='setFlightColoring',
+      @update:collapsed='collapsedSide = $event',
+      @toggle-fullscreen='toggleFullscreen',
       @remove='removeFlight')
 
     globe-viewer.viewer(
@@ -105,6 +123,8 @@ export default {
 
   altitude-chart.chart(
     :flights='flights',
+    :collapsed='collapsedChart',
+    @update:collapsed='collapsedChart = $event',
     @hover='hoverTime = $event')
 </template>
 
@@ -115,43 +135,12 @@ export default {
   flex-direction column
   height 100%
 
-  .top-bar
-    display flex
-    align-items center
-    gap 16px
-    padding 8px 12px
-    background #222
-    border-bottom 1px solid #333
-    flex-shrink 0
-
-    .title
-      font-weight 600
-      font-size 16px
-
-    .errors
-      flex 1
-      color #f88
-      font-size 12px
-
   .main
     flex 1
     display flex
     min-height 0
 
-    .controls
-      width 240px
-      background #1f1f1f
-      border-right 1px solid #333
-      overflow-y auto
-      flex-shrink 0
-
     .viewer
       flex 1
       min-width 0
-
-  .chart
-    height 200px
-    background #181818
-    border-top 1px solid #333
-    flex-shrink 0
 </style>
