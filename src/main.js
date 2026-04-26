@@ -1,9 +1,10 @@
 import {createApp} from 'vue'
+import * as Cesium from 'cesium'
 import App from './App.vue'
 import 'cesium/Build/Cesium/Widgets/widgets.css'
 import './styles/global.styl'
 
-// vite-define replaces this; declared globally so Cesium picks it up
 window.CESIUM_BASE_URL = CESIUM_BASE_URL
+Cesium.Ion.defaultAccessToken = import.meta.env.VITE_CESIUM_ION_TOKEN || ''
 
 createApp(App).mount('#app')

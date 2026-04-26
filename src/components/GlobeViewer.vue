@@ -35,13 +35,9 @@ export default {
   },
 
   mounted() {
-    Cesium.Ion.defaultAccessToken = ''
     this.viewer = new Cesium.Viewer(this.$refs.container, {
-      baseLayer: new Cesium.ImageryLayer(new Cesium.UrlTemplateImageryProvider({
-        url:          'https://tile.openstreetmap.org/{z}/{x}/{y}.png',
-        credit:       'OpenStreetMap',
-        maximumLevel: 19,
-      })),
+      baseLayer:            Cesium.ImageryLayer.fromWorldImagery(),
+      terrain:              Cesium.Terrain.fromWorldTerrain(),
       baseLayerPicker:      false,
       geocoder:             false,
       homeButton:           false,
@@ -53,6 +49,7 @@ export default {
       infoBox:              false,
       selectionIndicator:   false,
     })
+    this.viewer.scene.globe.maximumScreenSpaceError = 4
     this.syncFlights()
   },
 

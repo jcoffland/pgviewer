@@ -34,17 +34,20 @@ export default {
   methods: {
     async addFiles(files) {
       this.parseErrors = []
+      const added = []
       for (const file of files) {
         try {
           const text  = await file.text()
           const track = parseIgc(text, file.name)
-          const id    = this.nextId()
-          const color = FLIGHT_COLORS[this.flights.length % FLIGHT_COLORS.length]
-          this.flights.push({id, track, color})
+          const id    = this.nextId() + added.length
+          const color = FLIGHT_COLORS[
+            (this.flights.length + added.length) % FLIGHT_COLORS.length]
+          added.push({id, track, color})
         } catch (e) {
           this.parseErrors.push({name: file.name, msg: e.message})
         }
       }
+      if (added.length) this.flights = [...this.flights, ...added]
     },
 
     removeFlight(id) {

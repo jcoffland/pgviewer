@@ -55,17 +55,22 @@ export const aggregateBounds = flights => {
 export const buildScale = (key, bounds) => {
   switch (key) {
     case 'climb':
+      if (!bounds.climb) return null
       return new ZeroCenteredScale(
         [Math.max(-5, bounds.climb.min), Math.min(5, bounds.climb.max)],
         'climb', bilinearGradient)
     case 'tec':
+      if (!bounds.tec) return null
       return new ZeroCenteredScale(
         bounds.tec.tuple(), 'tec', bilinearGradient)
     case 'altitude':
+      if (!bounds.ele) return null
       return new Scale(bounds.ele.tuple(), 'altitude', defaultGradient)
     case 'speed':
+      if (!bounds.speed) return null
       return new Scale(bounds.speed.tuple(), 'speed', defaultGradient)
     case 'time':
+      if (!bounds.t) return null
       return new Scale(bounds.t.tuple(), 'time', defaultGradient)
     default: return null
   }
