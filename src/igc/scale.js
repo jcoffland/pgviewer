@@ -25,6 +25,10 @@ export class Scale {
   }
 
 
+  // Continuous color for a value (no quantization).
+  color(value) {return this.gradient(this.normalize(value))}
+
+
   colors(n = 32) {
     const out = new Array(n)
     for (let i = 0; i < n; i++) out[i] = this.gradient(i / (n - 1))
