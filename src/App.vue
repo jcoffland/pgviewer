@@ -19,7 +19,6 @@ export default {
   data() {
     return {
       flights:          [],
-      selectedColoring: 'climb',
       showShadow:       false,
       showAltitudeMarks:false,
       showTimeMarks:    false,
@@ -42,7 +41,7 @@ export default {
           const id    = this.nextId() + added.length
           const color = FLIGHT_COLORS[
             (this.flights.length + added.length) % FLIGHT_COLORS.length]
-          added.push({id, track, color})
+          added.push({id, track, color, coloringKey: 'climb'})
         } catch (e) {
           this.parseErrors.push({name: file.name, msg: e.message})
         }
@@ -52,6 +51,11 @@ export default {
 
     removeFlight(id) {
       this.flights = this.flights.filter(f => f.id != id)
+    },
+
+    setFlightColoring({id, key}) {
+      this.flights = this.flights.map(
+        f => f.id == id ? {...f, coloringKey: key} : f)
     },
 
     nextId() {
@@ -74,25 +78,23 @@ export default {
   .main
     track-controls.controls(
       :flights='flights',
-      :selected-coloring='selectedColoring',
       :show-shadow='showShadow',
       :show-altitude-marks='showAltitudeMarks',
       :show-time-marks='showTimeMarks',
       :show-thermals='showThermals',
       :show-glides='showGlides',
       :show-dives='showDives',
-      @update:selected-coloring='selectedColoring = $event',
       @update:show-shadow='showShadow = $event',
       @update:show-altitude-marks='showAltitudeMarks = $event',
       @update:show-time-marks='showTimeMarks = $event',
       @update:show-thermals='showThermals = $event',
       @update:show-glides='showGlides = $event',
       @update:show-dives='showDives = $event',
+      @update:coloring='setFlightColoring',
       @remove='removeFlight')
 
     globe-viewer.viewer(
       :flights='flights',
-      :selected-coloring='selectedColoring',
       :show-shadow='showShadow',
       :show-altitude-marks='showAltitudeMarks',
       :show-time-marks='showTimeMarks',
@@ -103,7 +105,6 @@ export default {
 
   altitude-chart.chart(
     :flights='flights',
-    :selected-coloring='selectedColoring',
     @hover='hoverTime = $event')
 </template>
 

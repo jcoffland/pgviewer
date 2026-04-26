@@ -16,7 +16,6 @@ const TOGGLE_MAP = {
 export default {
   props: {
     flights:           {type: Array, required: true},
-    selectedColoring:  {type: String, required: true},
     showShadow:        Boolean,
     showAltitudeMarks: Boolean,
     showTimeMarks:     Boolean,
@@ -49,7 +48,8 @@ export default {
       infoBox:              false,
       selectionIndicator:   false,
     })
-    this.viewer.scene.globe.maximumScreenSpaceError = 4
+    this.viewer.scene.globe.maximumScreenSpaceError = 16
+    this.viewer.scene.globe.tileCacheSize           = 1000
     this.syncFlights()
   },
 
@@ -59,7 +59,6 @@ export default {
 
   watch: {
     flights:           {handler: 'syncFlights', deep: false},
-    selectedColoring:  'rebuildTracks',
     showShadow:        'syncVisibility',
     showAltitudeMarks: 'syncVisibility',
     showTimeMarks:     'syncVisibility',
@@ -70,21 +69,27 @@ export default {
   },
 
   methods: {
-    // Add layers for new flights, drop layers for removed ones, fly to new
-    // layers on first add.
+    // The flights array changed. Three kinds of change:
+    //   - flight added       → build new layer with current aggregate scales
+    //   - flight removed     → detach old layer; rebuild remaining tracks
+    //                          because aggregate scales widened/narrowed
+    //   - coloringKey edited → rebuild that flight's track only
+    // We detect membership change vs key change and rebuild accordingly.
     syncFlights() {
       if (!this.viewer) return
 
       const present = new Set(this.flights.map(f => f.id))
-      let added = []
+      const added   = []
+      let removedAny = false
 
       for (const id of [...this.layers.keys()])
         if (!present.has(id)) {
           this.layers.get(id).detach(this.viewer)
           this.layers.delete(id)
+          removedAny = true
         }
 
-      // Recompute scales whenever the set of flights changes.
+      // Aggregate scales across all current flights. Used by every layer.
       const bounds = aggregateBounds(this.flights)
       const scales = {
         climb:    buildScale('climb',    bounds),
@@ -94,19 +99,22 @@ export default {
         time:     buildScale('time',     bounds),
       }
 
-      // For existing layers we leave their (older) scales — they were
-      // computed for the old aggregate. Rebuilding the track picks up
-      // the new aggregate. Since selectedColoring is shared, just rebuild.
+      // If membership changed, all existing layers need a rebuild because
+      // the aggregate scales they were built against just shifted.
+      const rebuildAll = removedAny || this.flights.some(
+        f => !this.layers.has(f.id))
+
       for (const f of this.flights) {
         let layer = this.layers.get(f.id)
         if (!layer) {
-          layer = new FlightLayer(f, scales, this.selectedColoring)
+          layer = new FlightLayer(f, scales, f.coloringKey)
           this.layers.set(f.id, layer)
           layer.attach(this.viewer)
           added.push(layer)
         } else {
           layer.scales = scales
-          layer.rebuildTrack(this.viewer, this.selectedColoring)
+          if (rebuildAll || layer.coloringKey != f.coloringKey)
+            layer.rebuildTrack(this.viewer, f.coloringKey)
         }
       }
 
@@ -115,14 +123,6 @@ export default {
       if (added.length) this.flyToLayers(added)
     },
 
-    // Coloring change: keep all layers, swap each one's track collection.
-    rebuildTracks() {
-      if (!this.viewer) return
-      for (const layer of this.layers.values())
-        layer.rebuildTrack(this.viewer, this.selectedColoring)
-    },
-
-    // Toggle visibility of optional groups based on the UI flags.
     syncVisibility() {
       for (const layer of this.layers.values()) {
         layer.setShadowVisible(this.showShadow)
@@ -131,7 +131,6 @@ export default {
       }
     },
 
-    // Fly to the union of bounding spheres of the given layers.
     flyToLayers(layers) {
       if (!layers.length) return
       const spheres = layers.map(l => l.boundingSphere())

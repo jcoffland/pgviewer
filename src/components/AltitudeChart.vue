@@ -5,8 +5,7 @@ import 'uplot/dist/uPlot.min.css'
 
 export default {
   props: {
-    flights:          {type: Array, required: true},
-    selectedColoring: {type: String, required: true},
+    flights: {type: Array, required: true},
   },
 
   emits: ['hover'],
@@ -27,8 +26,7 @@ export default {
   },
 
   watch: {
-    flights:          'build',
-    selectedColoring: 'build',
+    flights: 'build',
   },
 
   methods: {
@@ -39,10 +37,11 @@ export default {
       const series = [
         {label: 'time'},
         ...this.flights.map(f => ({
-          label:  f.track.filename,
-          stroke: f.color,
-          width:  1.5,
-          points: {show: false},
+          label:    f.track.filename,
+          stroke:   f.color,
+          width:    1.5,
+          spanGaps: true,
+          points:   {show: false},
         })),
       ]
 
