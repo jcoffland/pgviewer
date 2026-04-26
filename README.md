@@ -45,8 +45,10 @@ GPL-3.0-or-later. See [LICENSE](LICENSE).
 
 ## Credits
 
-Author: TODO  
-Source: TODO
+Author: Joseph Coffland
+
+IGC parsing and analysis derived from
+[twpayne/igc2kmz.py](https://github.com/twpayne/igc2kmz.py).
 
 Built with [Vue 3](https://vuejs.org/), [Vite](https://vitejs.dev/),
 [CesiumJS](https://cesium.com/platform/cesiumjs/), and
