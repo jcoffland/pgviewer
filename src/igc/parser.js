@@ -35,10 +35,18 @@ export const parseIgc = (text, filename = null) => {
 
   if (!state.b.length) throw new Error('no B records in IGC file')
 
-  // Prefer GPS altitude (ele) over pressure altitude (alt) when present.
-  const useEle = state.b.some(b => b.ele != 0)
-  const coords = state.b.map(b =>
-    Coord.deg(b.lat, b.lon, useEle ? b.ele : b.alt, b.dt))
+  // Pressure altitude is smooth but uncalibrated; GPS altitude is
+  // calibrated but noisy. Use pressure shifted by the median (gps -
+  // pressure) offset to get a smooth altitude in absolute reference.
+  // Falls back to one or the other if a series is missing.
+  const havePress = state.b.some(b => b.alt != 0)
+  const haveGps   = state.b.some(b => b.ele != 0)
+  let elev
+  if (havePress && haveGps)        elev = pressureWithOffset(state.b)
+  else if (havePress)              elev = state.b.map(b => b.alt)
+  else                             elev = state.b.map(b => b.ele)
+
+  const coords = state.b.map((b, i) => Coord.deg(b.lat, b.lon, elev[i], b.dt))
 
   const opts = {filename}
   for (const [k, attr] of [['plt', 'pilotName'],
@@ -109,4 +117,17 @@ const parseH = (line, state) => {
   }
   const m = line.match(H_RE)
   if (m) state.h[m[1].toLowerCase()] = m[2]
+}
+
+
+// Build a smooth altitude series from pressure altitude shifted to match
+// the GPS altitude in absolute reference. The shift is the median of
+// (gps - pressure), which is robust against GPS spikes.
+const pressureWithOffset = bRecords => {
+  const diffs = []
+  for (const b of bRecords)
+    if (b.alt != 0 && b.ele != 0) diffs.push(b.ele - b.alt)
+  diffs.sort((a, b) => a - b)
+  const offset = diffs.length ? diffs[diffs.length >> 1] : 0
+  return bRecords.map(b => b.alt + offset)
 }

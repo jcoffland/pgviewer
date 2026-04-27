@@ -38,10 +38,31 @@ describe('parseIgc on synthetic minimal file', () => {
     expect(t.gliderId).toBe('T-001')
   })
 
-  it('uses GPS altitude when nonzero', () => {
+  it('produces altitude from pressure shifted by GPS offset', () => {
     const t = parseIgc(igc, 'synth.igc')
-    // ele field of first B record is 558
+    // press[0] = 587, gps[0] = 558. Median (gps - press) over 8 records
+    // is -30, so altitude = 587 + (-30) = 557.
+    expect(t.coords[0].ele).toBe(557)
+  })
+
+  it('falls back to GPS when pressure is missing', () => {
+    const noPress = [
+      'HFDTE140709',
+      'B1101355206343N00006198WA0000000558',
+      'B1101455206400N00006300WA0000000570',
+    ].join('\n')
+    const t = parseIgc(noPress)
     expect(t.coords[0].ele).toBe(558)
+  })
+
+  it('falls back to pressure when GPS is missing', () => {
+    const noGps = [
+      'HFDTE140709',
+      'B1101355206343N00006198WA0058700000',
+      'B1101455206400N00006300WA0060000000',
+    ].join('\n')
+    const t = parseIgc(noGps)
+    expect(t.coords[0].ele).toBe(587)
   })
 
   it('parses date from HFDTE', () => {
