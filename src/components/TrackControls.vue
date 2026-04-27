@@ -9,6 +9,7 @@ const COLORINGS = [
   {key: 'speed',       label: 'Ground speed'},
   {key: 'time',        label: 'Time'},
   {key: 'solid_color', label: 'Solid color'},
+  {key: 'hidden',      label: 'Hidden'},
 ]
 
 

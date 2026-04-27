@@ -27,6 +27,7 @@ export default {
   'Ground speed':                         'Geschwindigkeit über Grund',
   'Time':                                 'Zeit',
   'Solid color':                          'Einfarbig',
+  'Hidden':                               'Ausgeblendet',
 
   'Fullscreen':                           'Vollbild',
   'Exit fullscreen':                      'Vollbild beenden',

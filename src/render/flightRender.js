@@ -396,7 +396,9 @@ export class FlightLayer {
     this.coloringKey = coloringKey
 
     // Primitive collections (added to scene.primitives).
-    this.trackColl  = buildTrackCollection(flight, coloringKey, scales[coloringKey])
+    this.trackColl  = coloringKey == 'hidden'
+      ? new Cesium.PolylineCollection()
+      : buildTrackCollection(flight, coloringKey, scales[coloringKey])
     this.shadowColl = buildShadowGround(flight)
 
     // Entity groups (added to viewer.entities).
@@ -439,8 +441,9 @@ export class FlightLayer {
   rebuildTrack(viewer, coloringKey) {
     this.coloringKey = coloringKey
     if (this.attached) viewer.scene.primitives.remove(this.trackColl)
-    this.trackColl = buildTrackCollection(
-      this.flight, coloringKey, this.scales[coloringKey])
+    this.trackColl = coloringKey == 'hidden'
+      ? new Cesium.PolylineCollection()
+      : buildTrackCollection(this.flight, coloringKey, this.scales[coloringKey])
     if (this.attached) viewer.scene.primitives.add(this.trackColl)
   }
 

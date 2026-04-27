@@ -27,6 +27,7 @@ export default {
   'Ground speed':                         'Velocità al suolo',
   'Time':                                 'Tempo',
   'Solid color':                          'Tinta unita',
+  'Hidden':                               'Nascosto',
 
   'Fullscreen':                           'Schermo intero',
   'Exit fullscreen':                      'Esci da schermo intero',

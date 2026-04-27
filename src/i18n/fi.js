@@ -32,6 +32,7 @@ export default {
   'Ground speed':                         'Maanopeus',
   'Time':                                 'Aika',
   'Solid color':                          'Yksivärinen',
+  'Hidden':                               'Piilotettu',
 
   // Tooltips
   'Fullscreen':                           'Koko näyttö',
