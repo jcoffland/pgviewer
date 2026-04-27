@@ -288,7 +288,7 @@ const buildAnalysis = (flight, slices, color, kind) => {
         outlineColor:    Cesium.Color.BLACK,
         outlineWidth:    2,
         style:           Cesium.LabelStyle.FILL_AND_OUTLINE,
-        pixelOffset:     new Cesium.Cartesian2(8, 0),
+        pixelOffset:     new Cesium.Cartesian2(8, -14),
         showBackground:  true,
         backgroundColor: Cesium.Color.BLACK.withAlpha(0.6),
       },

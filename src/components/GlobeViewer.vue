@@ -7,6 +7,7 @@ import {aggregateBounds, buildScale, FlightLayer} from '../render/flightRender.j
 const TOGGLE_MAP = {
   showAltitudeMarks: 'altitudeMarks',
   showTimeMarks:     'timeMarks',
+  showWaypoints:     'task',
   showThermals:      'thermals',
   showGlides:        'glides',
   showDives:         'dives',
@@ -19,6 +20,7 @@ export default {
     showShadow:        Boolean,
     showAltitudeMarks: Boolean,
     showTimeMarks:     Boolean,
+    showWaypoints:     Boolean,
     showThermals:      Boolean,
     showGlides:        Boolean,
     showDives:         Boolean,
@@ -66,6 +68,7 @@ export default {
     showShadow:        'syncVisibility',
     showAltitudeMarks: 'syncVisibility',
     showTimeMarks:     'syncVisibility',
+    showWaypoints:     'syncVisibility',
     showThermals:      'syncVisibility',
     showGlides:        'syncVisibility',
     showDives:         'syncVisibility',

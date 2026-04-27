@@ -21,6 +21,7 @@ export default {
       showShadow:       false,
       showAltitudeMarks:false,
       showTimeMarks:    false,
+      showWaypoints:    false,
       showThermals:     false,
       showGlides:       false,
       showDives:        false,
@@ -93,33 +94,39 @@ export default {
       :show-shadow='showShadow',
       :show-altitude-marks='showAltitudeMarks',
       :show-time-marks='showTimeMarks',
+      :show-waypoints='showWaypoints',
       :show-thermals='showThermals',
       :show-glides='showGlides',
       :show-dives='showDives',
       :collapsed='collapsedSide',
-      :is-fullscreen='isFullscreen',
       :parse-errors='parseErrors',
       @files='addFiles',
       @update:show-shadow='showShadow = $event',
       @update:show-altitude-marks='showAltitudeMarks = $event',
       @update:show-time-marks='showTimeMarks = $event',
+      @update:show-waypoints='showWaypoints = $event',
       @update:show-thermals='showThermals = $event',
       @update:show-glides='showGlides = $event',
       @update:show-dives='showDives = $event',
       @update:coloring='setFlightColoring',
       @update:collapsed='collapsedSide = $event',
-      @toggle-fullscreen='toggleFullscreen',
       @remove='removeFlight')
 
-    globe-viewer.viewer(
-      :flights='flights',
-      :show-shadow='showShadow',
-      :show-altitude-marks='showAltitudeMarks',
-      :show-time-marks='showTimeMarks',
-      :show-thermals='showThermals',
-      :show-glides='showGlides',
-      :show-dives='showDives',
-      :hover-time='hoverTime')
+    .viewer-area
+      globe-viewer.viewer(
+        :flights='flights',
+        :show-shadow='showShadow',
+        :show-altitude-marks='showAltitudeMarks',
+        :show-time-marks='showTimeMarks',
+        :show-waypoints='showWaypoints',
+        :show-thermals='showThermals',
+        :show-glides='showGlides',
+        :show-dives='showDives',
+        :hover-time='hoverTime')
+      button.fullscreen-toggle.icon(
+        :title='isFullscreen ? "Exit fullscreen" : "Fullscreen"',
+        @click='toggleFullscreen')
+        | {{ isFullscreen ? '⇲' : '⛶' }}
 
   altitude-chart.chart(
     :flights='flights',
@@ -140,7 +147,30 @@ export default {
     display flex
     min-height 0
 
-    .viewer
+    .viewer-area
       flex 1
       min-width 0
+      position relative
+
+      .viewer
+        position absolute
+        inset 0
+
+      .fullscreen-toggle
+        position absolute
+        top 8px
+        right 8px
+        z-index 10
+        background rgba(0, 0, 0, 0.6)
+        border 1px solid #555
+        color #eee
+        font-size 16px
+        line-height 1
+        padding 4px 8px
+        cursor pointer
+        border-radius 3px
+
+        &:hover
+          background rgba(40, 40, 40, 0.85)
+          border-color #888
 </style>

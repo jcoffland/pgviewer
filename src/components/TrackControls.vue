@@ -5,7 +5,7 @@ import FileDropzone from './FileDropzone.vue'
 const COLORINGS = [
   {key: 'climb',       label: 'Climb',        needsEle: true},
   {key: 'altitude',    label: 'Altitude',     needsEle: true},
-  {key: 'tec',         label: 'TEC',          needsEle: true},
+  {key: 'tec',         label: 'Energy',       needsEle: true},
   {key: 'speed',       label: 'Ground speed'},
   {key: 'time',        label: 'Time'},
   {key: 'solid_color', label: 'Solid color'},
@@ -20,11 +20,11 @@ export default {
     showShadow:        Boolean,
     showAltitudeMarks: Boolean,
     showTimeMarks:     Boolean,
+    showWaypoints:     Boolean,
     showThermals:      Boolean,
     showGlides:        Boolean,
     showDives:         Boolean,
     collapsed:         Boolean,
-    isFullscreen:      Boolean,
     parseErrors:       {type: Array, default: () => []},
   },
 
@@ -32,12 +32,12 @@ export default {
     'update:showShadow',
     'update:showAltitudeMarks',
     'update:showTimeMarks',
+    'update:showWaypoints',
     'update:showThermals',
     'update:showGlides',
     'update:showDives',
     'update:coloring',
     'update:collapsed',
-    'toggle-fullscreen',
     'remove',
     'files',
   ],
@@ -63,8 +63,6 @@ export default {
   template(v-else)
     .header
       .title PG Viewer
-      button.icon(:title='isFullscreen ? "Exit fullscreen" : "Fullscreen"', @click='$emit("toggle-fullscreen")')
-        | {{ isFullscreen ? '⇲' : '⛶' }}
       button.icon(title='Collapse', @click='$emit("update:collapsed", true)') ‹
 
     .body
@@ -96,6 +94,12 @@ export default {
               :checked='showTimeMarks',
               @change='$emit("update:showTimeMarks", $event.target.checked)')
             | Time marks
+          label.option
+            input(
+              type='checkbox',
+              :checked='showWaypoints',
+              @change='$emit("update:showWaypoints", $event.target.checked)')
+            | Waypoints
 
       section
         h3 Analysis
