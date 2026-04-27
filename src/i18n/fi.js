@@ -34,6 +34,19 @@ export default {
   'Solid color':                          'Yksivärinen',
   'Hidden':                               'Piilotettu',
 
+  // Coloring tooltips
+  'Color by climb rate: red is strong climb, blue is sink.':
+                                          'Värjää nousunopeuden mukaan: punainen on voimakas nousu, sininen lasku.',
+  'Color by altitude above sea level.':   'Värjää korkeuden mukaan merenpinnasta.',
+  'Color by total energy compensated climb (climb + speed change).':
+                                          'Värjää kokonaisenergiakompensoidun nousun mukaan (nousu + nopeuden muutos).',
+  'Color by ground speed.':               'Värjää maanopeuden mukaan.',
+  'Color by time, from start of track to end.':
+                                          'Värjää ajan mukaan, lentopolun alusta loppuun.',
+  'Single color for the whole track.':    'Yksi väri koko lentopolulle.',
+  'Hide the track polyline (other layers like marks and analysis stay visible).':
+                                          'Piilota lentopolku (muut tasot kuten merkit ja analyysi pysyvät näkyvissä).',
+
   // Tooltips
   'Fullscreen':                           'Koko näyttö',
   'Exit fullscreen':                      'Poistu koko näytöltä',

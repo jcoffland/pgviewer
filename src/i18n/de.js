@@ -29,6 +29,19 @@ export default {
   'Solid color':                          'Einfarbig',
   'Hidden':                               'Ausgeblendet',
 
+  // Coloring tooltips
+  'Color by climb rate: red is strong climb, blue is sink.':
+                                          'Farbe nach Steigrate: rot = starkes Steigen, blau = Sinken.',
+  'Color by altitude above sea level.':   'Farbe nach Höhe über dem Meeresspiegel.',
+  'Color by total energy compensated climb (climb + speed change).':
+                                          'Farbe nach gesamtenergiekompensiertem Steigen (Steigen + Geschwindigkeitsänderung).',
+  'Color by ground speed.':               'Farbe nach Geschwindigkeit über Grund.',
+  'Color by time, from start of track to end.':
+                                          'Farbe nach Zeit, vom Beginn bis zum Ende der Strecke.',
+  'Single color for the whole track.':    'Einheitliche Farbe für die gesamte Strecke.',
+  'Hide the track polyline (other layers like marks and analysis stay visible).':
+                                          'Strecke ausblenden (andere Ebenen wie Marken und Analyse bleiben sichtbar).',
+
   'Fullscreen':                           'Vollbild',
   'Exit fullscreen':                      'Vollbild beenden',
   'Snap to view':                         'An Ansicht anpassen',

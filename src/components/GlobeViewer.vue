@@ -145,7 +145,10 @@ export default {
       const spheres = layers.map(l => l.boundingSphere())
       const union = spheres.reduce(
         (acc, s) => Cesium.BoundingSphere.union(acc, s), spheres[0])
-      this.viewer.camera.flyToBoundingSphere(union, {duration: 1.0})
+      this.viewer.camera.flyToBoundingSphere(union, {
+        duration: 1.0,
+        offset:   new Cesium.HeadingPitchRange(0, -Cesium.Math.PI_OVER_FOUR, union.radius * 1.75),
+      })
     },
 
     flyToAll() {this.flyToLayers([...this.layers.values()])},

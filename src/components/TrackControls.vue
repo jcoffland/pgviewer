@@ -3,13 +3,20 @@ import FileDropzone from './FileDropzone.vue'
 
 
 const COLORINGS = [
-  {key: 'climb',       label: 'Climb',        needsEle: true},
-  {key: 'altitude',    label: 'Altitude',     needsEle: true},
-  {key: 'tec',         label: 'Energy',       needsEle: true},
-  {key: 'speed',       label: 'Ground speed'},
-  {key: 'time',        label: 'Time'},
-  {key: 'solid_color', label: 'Solid color'},
-  {key: 'hidden',      label: 'Hidden'},
+  {key: 'climb',       label: 'Climb',        needsEle: true,
+   help: 'Color by climb rate: red is strong climb, blue is sink.'},
+  {key: 'altitude',    label: 'Altitude',     needsEle: true,
+   help: 'Color by altitude above sea level.'},
+  {key: 'tec',         label: 'Energy',       needsEle: true,
+   help: 'Color by total energy compensated climb (climb + speed change).'},
+  {key: 'speed',       label: 'Ground speed',
+   help: 'Color by ground speed.'},
+  {key: 'time',        label: 'Time',
+   help: 'Color by time, from start of track to end.'},
+  {key: 'solid_color', label: 'Solid color',
+   help: 'Single color for the whole track.'},
+  {key: 'hidden',      label: 'Hidden',
+   help: 'Hide the track polyline (other layers like marks and analysis stay visible).'},
 ]
 
 
@@ -39,6 +46,11 @@ export default {
     coloringsFor(flight) {
       if (flight.track.elevationData) return this.colorings
       return this.colorings.filter(c => !c.needsEle)
+    },
+
+    helpFor(key) {
+      const c = this.colorings.find(c => c.key == key)
+      return c ? c.help : ''
     },
   },
 }
@@ -73,8 +85,13 @@ export default {
             button(@click='$emit("remove", f.id)') ×
           select(
             :value='f.coloringKey',
+            :title='$t(helpFor(f.coloringKey))',
             @change='$emit("update:coloring", {id: f.id, key: $event.target.value})')
-            option(v-for='c in coloringsFor(f)', :key='c.key', :value='c.key')
+            option(
+              v-for='c in coloringsFor(f)',
+              :key='c.key',
+              :value='c.key',
+              :title='$t(c.help)')
               | {{ $t(c.label) }}
         button.clear-btn(@click='$emit("clear")') {{ $t('Clear all') }}
 </template>
