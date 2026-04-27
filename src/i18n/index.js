@@ -1,4 +1,5 @@
 import {ref} from 'vue'
+import en from './en.js'
 import fi from './fi.js'
 import it from './it.js'
 import de from './de.js'
@@ -6,7 +7,7 @@ import de from './de.js'
 
 export const LANGUAGES = ['en', 'fi', 'it', 'de']
 
-const TABLES = {fi, it, de}
+const TABLES = {en, fi, it, de}
 const STORAGE_KEY = 'pgviewer.lang'
 
 
@@ -15,14 +16,15 @@ const STORAGE_KEY = 'pgviewer.lang'
 export const currentLang = ref('en')
 
 
-// Translate an English source string. Falls back to the source if no
-// translation exists. The English string is the canonical key.
-export const t = en => {
-  const lang = currentLang.value
-  if (lang == 'en') return en
-  const table = TABLES[lang]
-  if (!table) return en
-  return table[en] || en
+// Translate a key. Looks up in the current language table; falls back
+// to the key string itself when not present. Most short strings are
+// keyed by their English text directly so the fallback renders sensibly
+// in English. Long content (e.g. the About dialog) uses short keys and
+// must appear in every language table including English.
+export const t = key => {
+  const table = TABLES[currentLang.value]
+  if (table && table[key] != null) return table[key]
+  return key
 }
 
 

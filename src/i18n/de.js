@@ -64,4 +64,42 @@ export default {
   'shared bundle too large':              'geteiltes Paket zu groß',
   'the shared file is no longer available (it may have expired)':
                                           'die geteilte Datei ist nicht mehr verfügbar (möglicherweise abgelaufen)',
+
+  about: `
+    <h4>Was es ist</h4>
+    <p>Ein 3D-Viewer für Gleitschirm-Flugtracks (IGC-Dateien). Tracks
+       werden auf einem Satellitenglobus mit Gelände angezeigt.</p>
+
+    <h4>Tracks laden</h4>
+    <p>Eine oder mehrere IGC-Dateien in das Seitenpanel ziehen, oder zum
+       Auswählen klicken.</p>
+
+    <h4>Tracks einfärben</h4>
+    <p>Über das Dropdown-Menü unter jedem geladenen Track lässt sich die
+       Färbung nach Steigrate, Höhe, Energie, Geschwindigkeit, Zeit oder
+       einfarbig wählen. "Ausgeblendet" entfernt die Linie, während
+       Marken und Analyse sichtbar bleiben.</p>
+
+    <h4>Einstellungen und Ansicht</h4>
+    <p>Das Zahnrad-Symbol schaltet Ebenen (Schatten, Höhen-/Zeitmarken,
+       Wegpunkte) und Analyse-Overlays (Thermik, Gleitstrecken,
+       Sturzflüge) um. Die Fadenkreuz-Schaltfläche rahmt alle geladenen
+       Tracks; Doppelklick auf das Höhendiagramm rahmt die aktuellen
+       Cursor-Positionen.</p>
+
+    <h4>Maussteuerung</h4>
+    <p>Linke Maustaste ziehen verschiebt die Ansicht. Rechte Maustaste
+       ziehen oder Mausrad zoomt. Mittlere Maustaste ziehen (oder
+       Strg + linke Maustaste) neigt und dreht die Kamera.</p>
+
+    <h4>Cursor und Höhendiagramm</h4>
+    <p>Mit der Maus über das Höhendiagramm fahren, um die Position jedes
+       Piloten auf dem Globus zu sehen. Der Cursor bleibt erhalten, wenn
+       die Maus das Diagramm verlässt.</p>
+
+    <h4>Teilen</h4>
+    <p>"Teilbaren Link erstellen" lädt die geladenen Tracks in einen
+       deduplizierten Speicher hoch und erzeugt eine URL, die dieselben
+       Tracks für jeden mit dem Link öffnet.</p>
+  `,
 }

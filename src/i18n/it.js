@@ -64,4 +64,44 @@ export default {
   'shared bundle too large':              'pacchetto condiviso troppo grande',
   'the shared file is no longer available (it may have expired)':
                                           'il file condiviso non è più disponibile (potrebbe essere scaduto)',
+
+  about: `
+    <h4>Cos'è</h4>
+    <p>Un visualizzatore 3D per tracce di volo in parapendio (file IGC).
+       Le tracce vengono mostrate su un globo satellitare con il
+       terreno.</p>
+
+    <h4>Caricare le tracce</h4>
+    <p>Trascina uno o più file IGC nel pannello laterale, oppure fai clic
+       per scegliere.</p>
+
+    <h4>Colorare le tracce</h4>
+    <p>Usa il menu a tendina sotto ogni traccia caricata per colorare in
+       base al rateo di salita, alla quota, all'energia, alla velocità al
+       suolo, al tempo o a tinta unita. "Nascosto" rimuove il tracciato
+       mantenendo visibili indicatori e analisi.</p>
+
+    <h4>Impostazioni e vista</h4>
+    <p>L'icona dell'ingranaggio attiva i livelli (ombra, indicatori di
+       quota/temporali, punti di rotta) e gli strati di analisi
+       (termiche, planate, picchiate). Il pulsante a mirino inquadra
+       tutte le tracce caricate; doppio clic sul grafico delle quote per
+       inquadrare i punti correnti.</p>
+
+    <h4>Controlli del mouse</h4>
+    <p>Trascina con il tasto sinistro per spostarti. Trascina con il
+       tasto destro o usa la rotella per zoomare. Trascina con il tasto
+       centrale (o Ctrl + tasto sinistro) per inclinare e ruotare la
+       camera.</p>
+
+    <h4>Cursore e grafico delle quote</h4>
+    <p>Passa il cursore sul grafico delle quote per vedere la posizione
+       di ogni pilota sul globo. Il cursore rimane visibile quando il
+       mouse esce dal grafico.</p>
+
+    <h4>Condivisione</h4>
+    <p>"Crea link condivisibile" carica le tracce caricate in uno
+       storage deduplicato e produce un URL che apre lo stesso set di
+       tracce per chiunque abbia il link.</p>
+  `,
 }

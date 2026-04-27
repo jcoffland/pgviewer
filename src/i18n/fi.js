@@ -73,4 +73,41 @@ export default {
   'shared bundle too large':              'jaettava paketti on liian suuri',
   'the shared file is no longer available (it may have expired)':
                                           'jaettu tiedosto ei ole enää saatavilla (se on saattanut vanhentua)',
+
+  about: `
+    <h4>Mikä tämä on</h4>
+    <p>3D-katselin liitovarjolennoille (IGC-tiedostot). Reitit näkyvät
+       satelliittikartalla maaston päällä.</p>
+
+    <h4>Reittien lataaminen</h4>
+    <p>Pudota yksi tai useampi IGC-tiedosto sivupaneeliin tai napsauta
+       valitaksesi.</p>
+
+    <h4>Reittien värittäminen</h4>
+    <p>Käytä jokaisen ladatun reitin alla olevaa pudotusvalikkoa
+       värittääksesi nousunopeuden, korkeuden, energian, maanopeuden,
+       ajan tai yksivärisen mukaan. "Piilotettu" poistaa reittiviivan
+       mutta säilyttää merkit ja analyysin näkyvissä.</p>
+
+    <h4>Asetukset ja näkymä</h4>
+    <p>Hammasrataskuvake vaihtaa tasoja (varjo, korkeus-/aikamerkit,
+       reittipisteet) ja analyysitasoja (termiikit, liidot, syöksyt).
+       Tähtäin-painike rajaa kaikki ladatut reitit; tuplaklikkaa
+       korkeuskaaviota rajataksesi nykyiset osoitinpisteet.</p>
+
+    <h4>Hiiren ohjaus</h4>
+    <p>Vasen veto liikuttaa näkymää. Oikea veto tai rullaaminen zoomaa.
+       Keskimmäinen veto (tai Ctrl + vasen veto) kallistaa ja kiertää
+       kameraa.</p>
+
+    <h4>Osoitin ja korkeuskaavio</h4>
+    <p>Vie hiiri korkeuskaavion päälle nähdäksesi kunkin lentäjän
+       sijainnin maapallolla. Osoitin pysyy paikallaan, kun hiiri poistuu
+       kaaviolta.</p>
+
+    <h4>Jakaminen</h4>
+    <p>"Luo jaettava linkki" lataa ladatut reitit deduplikoituun
+       varastoon ja tuottaa URL:n, joka avaa samat reitit kenelle
+       tahansa, jolla on linkki.</p>
+  `,
 }
