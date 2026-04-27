@@ -5,9 +5,10 @@ import {Track, THERMAL, GLIDE} from '../src/igc/track.js'
 
 // Build a synthetic track of N points starting at (lat, lon, ele0), moving
 // `lonStep` degrees east per sample, gaining `dEle` meters per sample,
-// at `dtSec` seconds between samples.
+// at `dtSec` seconds between samples. Defaults are paraglider-realistic
+// (~7 m/s ground speed, no climb).
 const synth = ({n = 30, lat = 45, lon = 10, ele0 = 1000,
-                lonStep = 0.001, dEle = 0, dtSec = 1, t0 = null} = {}) => {
+                lonStep = 0.0001, dEle = 0, dtSec = 1, t0 = null} = {}) => {
   const start = t0 || new Date(Date.UTC(2024, 5, 15, 10, 0, 0))
   const out = []
   for (let i = 0; i < n; i++)
@@ -32,17 +33,49 @@ describe('Track filter', () => {
     expect(track.coords.length).toBe(3)
   })
 
-  it('drops points exceeding 100 m/s ground speed', () => {
+  it('drops points exceeding ground speed limit', () => {
     const t0 = new Date(Date.UTC(2024, 0, 1, 10, 0, 0))
     const coords = [
       Coord.deg(45, 10,        1000, new Date(t0.getTime() + 0)),
-      Coord.deg(45, 10.001,    1000, new Date(t0.getTime() + 1000)),
-      // ~111 km in 1 second: well over 100 m/s, dropped
+      Coord.deg(45, 10.0001,   1000, new Date(t0.getTime() + 1000)),
+      // ~78 km east in 1 second: well over the 33 m/s limit, dropped
       Coord.deg(45, 11,        1000, new Date(t0.getTime() + 2000)),
-      Coord.deg(45, 10.002,    1000, new Date(t0.getTime() + 3000)),
+      Coord.deg(45, 10.0002,   1000, new Date(t0.getTime() + 3000)),
     ]
     const track = new Track(coords)
     expect(track.coords.length).toBe(3)
+  })
+
+  it('drops points with implausible vertical speed', () => {
+    const t0 = new Date(Date.UTC(2024, 0, 1, 10, 0, 0))
+    const coords = [
+      Coord.deg(45, 10,         1000, new Date(t0.getTime() + 0)),
+      Coord.deg(45, 10.0001,    1010, new Date(t0.getTime() + 1000)),
+      // 50 m climb in 1 sec → 50 m/s, far above 15 m/s limit
+      Coord.deg(45, 10.0002,    1060, new Date(t0.getTime() + 2000)),
+      Coord.deg(45, 10.0003,    1015, new Date(t0.getTime() + 3000)),
+    ]
+    const track = new Track(coords)
+    expect(track.coords.length).toBe(3)
+  })
+
+  it('drops points with impossible acceleration', () => {
+    // Steady 7 m/s ground speed for two seconds, then a sudden jump
+    // creating a one-second 25 m/s leg (still under speed limit) — the
+    // accel is 18 m/s^2, far over the 5 m/s^2 limit.
+    const t0 = new Date(Date.UTC(2024, 0, 1, 10, 0, 0))
+    const lonAt = m => 10 + m * (1 / 78000)  // approx m east at lat 45
+    const coords = [
+      Coord.deg(45, lonAt(0),  1000, new Date(t0.getTime() + 0)),
+      Coord.deg(45, lonAt(7),  1000, new Date(t0.getTime() + 1000)),
+      Coord.deg(45, lonAt(14), 1000, new Date(t0.getTime() + 2000)),
+      // jump to 25 m/s in next second: accel = 18 m/s^2
+      Coord.deg(45, lonAt(39), 1000, new Date(t0.getTime() + 3000)),
+      // next normal leg at 7 m/s
+      Coord.deg(45, lonAt(46), 1000, new Date(t0.getTime() + 4000)),
+    ]
+    const track = new Track(coords)
+    expect(track.coords.length).toBe(4)  // dropped the jump
   })
 })
 

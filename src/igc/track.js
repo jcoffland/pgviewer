@@ -11,6 +11,15 @@ export const GLIDE   = 2
 export const DIVE    = 3
 
 
+// Physical limits used by the outlier filter. Tuned for paragliders.
+const MAX_GROUND_SPEED  = 33   // m/s (~120 km/h, generous)
+const MAX_CLIMB         = 15   // m/s
+const MAX_SINK          = 20   // m/s (covers spirals)
+const MAX_HORIZ_ACCEL   = 5    // m/s^2
+const MAX_VERT_ACCEL    = 8    // m/s^2
+const ACCEL_GAP_LIMIT   = 10   // s; skip accel check across larger gaps
+
+
 // Time-indexed flight log. Construct via `new Track(coords, opts)` where
 // coords is a list of Coord with .dt set. The constructor filters obvious
 // GPS errors and runs analysis.
@@ -27,21 +36,39 @@ export class Track {
   }
 
 
-  // Drop points with implausible speed (over 100 m/s) or vspeed (over 30 m/s).
-  // TODO replace with Kahlman filter?
-  // TODO cope with erroneous points at start of track
+  // Reject points whose transition from the last accepted point violates
+  // physical limits. A two-point history lets us also reject impossible
+  // accelerations, which catches the case of two consecutive GPS jumps
+  // that look plausible to a one-point check.
   static _filter(coords) {
-    const out = [coords[0]]
-    let last  = coords[0]
+    const out  = []
+    let prev   = null
+    let prev2  = null
+    let prevSpeed = 0
+    let prevVspeed = 0
     for (const c of coords) {
-      if (c.dt <= last.dt) continue
-      const ds = last.distanceTo(c)
-      const dt = (c.dt - last.dt) / 1000
-      if (dt == 0 || 100 < ds / dt) continue
-      const dz = c.ele - last.ele
-      if (dz / dt < -30 || 30 < dz / dt) continue
+      if (!prev) {out.push(c); prev = c; continue}
+      const dt = (c.dt - prev.dt) / 1000
+      if (dt <= 0) continue
+      const ds = prev.distanceTo(c)
+      const dz = c.ele - prev.ele
+      const speed  = ds / dt
+      const vspeed = dz / dt
+      if (MAX_GROUND_SPEED < speed) continue
+      if (MAX_CLIMB < vspeed || vspeed < -MAX_SINK) continue
+
+      if (prev2 && (c.dt - prev2.dt) / 1000 < ACCEL_GAP_LIMIT) {
+        const horizAccel = Math.abs(speed - prevSpeed) / dt
+        const vertAccel  = Math.abs(vspeed - prevVspeed) / dt
+        if (MAX_HORIZ_ACCEL < horizAccel) continue
+        if (MAX_VERT_ACCEL  < vertAccel)  continue
+      }
+
       out.push(c)
-      last = c
+      prev2 = prev
+      prev  = c
+      prevSpeed  = speed
+      prevVspeed = vspeed
     }
     return out
   }
