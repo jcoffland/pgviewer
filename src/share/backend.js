@@ -5,6 +5,8 @@
 // identifier that fetchById accepts. The id is short enough to embed
 // in a URL fragment.
 
+import {t} from '../i18n/index.js'
+
 const STORAGE_URL = import.meta.env.VITE_STORAGE_URL || ''
 
 
@@ -50,7 +52,7 @@ export const fetchById = async id => {
   const res = await fetch(objectUrl(id))
   if (!res.ok) {
     if (res.status == 404)
-      throw new Error('the shared file is no longer available (it may have expired)')
+      throw new Error(t('the shared file is no longer available (it may have expired)'))
     throw new Error('failed to load shared file: HTTP ' + res.status)
   }
   return await res.blob()

@@ -176,7 +176,7 @@ export default {
 
 <template lang="pug">
 .globe-viewer
-  .empty(v-if='showEmpty && !flights.length') Drop one or more IGC files to begin.
+  .empty(v-if='showEmpty && !flights.length') {{ $t('Drop one or more IGC files to begin.') }}
   .container(ref='container')
 </template>
 

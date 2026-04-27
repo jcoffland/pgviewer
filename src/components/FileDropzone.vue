@@ -38,7 +38,7 @@ label.dropzone(
   @dragover='onDragOver',
   @dragleave='onDragLeave',
   @drop='onDrop')
-  | Drop IGC files or click to choose
+  | {{ $t('Drop IGC files or click to choose') }}
   input(type='file', accept='.igc', multiple, @change='onPick')
 </template>
 

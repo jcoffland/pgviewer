@@ -1,6 +1,7 @@
 <script>
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
+import {currentLang} from '../i18n/index.js'
 
 
 export default {
@@ -13,6 +14,10 @@ export default {
 
   data() {
     return {plot: null, ro: null}
+  },
+
+  computed: {
+    lang() {return currentLang.value},
   },
 
   mounted() {
@@ -28,6 +33,7 @@ export default {
 
   watch: {
     flights:   'build',
+    lang:      'build',
     collapsed(v) {if (!v) this.$nextTick(() => this.build())},
   },
 
@@ -66,7 +72,7 @@ export default {
         series,
         axes: [
           {stroke: '#888', grid: {stroke: '#333'}},
-          {stroke: '#888', grid: {stroke: '#333'}, label: 'altitude (m)'},
+          {stroke: '#888', grid: {stroke: '#333'}, label: this.$t('altitude (m)')},
         ],
         cursor: {
           drag:   {x: false, y: false},
@@ -126,17 +132,17 @@ export default {
 <template lang="pug">
 .altitude-chart(:class='{collapsed}')
   .header
-    .label Altitude
+    .label {{ $t('Altitude') }}
     .legend(v-if='flights.length')
       .legend-item(v-for='f in flights', :key='f.id')
         .dash(:style='{background: f.color}')
         .legend-text {{ legendFor(f) }}
     button.icon(
-      :title='collapsed ? "Expand" : "Collapse"',
+      :title='collapsed ? $t("Expand") : $t("Collapse")',
       @click='$emit("update:collapsed", !collapsed)')
       | {{ collapsed ? '▴' : '▾' }}
   .body
-    .empty(v-if='!flights.length') No flights loaded
+    .empty(v-if='!flights.length') {{ $t('No flights loaded') }}
     .container(ref='container')
 </template>
 

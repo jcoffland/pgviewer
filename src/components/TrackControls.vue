@@ -61,74 +61,74 @@ export default {
 <template lang="pug">
 .track-controls(:class='{collapsed}')
   .strip(v-if='collapsed', @click='$emit("update:collapsed", false)')
-    button.icon(title='Expand') ›
+    button.icon(:title='$t("Expand")') ›
   template(v-else)
     .header
       .title PG Viewer
-      button.icon(title='Collapse', @click='$emit("update:collapsed", true)') ‹
+      button.icon(:title='$t("Collapse")', @click='$emit("update:collapsed", true)') ‹
 
     .body
       section
-        h3 Files
+        h3 {{ $t('Files') }}
         file-dropzone(@files='$emit("files", $event)')
         button.share-btn(:disabled='!flights.length', @click='$emit("share")')
-          | Create shareable link
+          | {{ $t('Create shareable link') }}
         .errors(v-if='parseErrors.length')
           .error(v-for='e in parseErrors', :key='e.name')
             | {{ e.name }}: {{ e.msg }}
 
       section
-        h3 Layers
+        h3 {{ $t('Layers') }}
         .options
           label.option
             input(
               type='checkbox',
               :checked='showShadow',
               @change='$emit("update:showShadow", $event.target.checked)')
-            | Shadow
+            | {{ $t('Shadow') }}
           label.option
             input(
               type='checkbox',
               :checked='showAltitudeMarks',
               @change='$emit("update:showAltitudeMarks", $event.target.checked)')
-            | Altitude marks
+            | {{ $t('Altitude marks') }}
           label.option
             input(
               type='checkbox',
               :checked='showTimeMarks',
               @change='$emit("update:showTimeMarks", $event.target.checked)')
-            | Time marks
+            | {{ $t('Time marks') }}
           label.option
             input(
               type='checkbox',
               :checked='showWaypoints',
               @change='$emit("update:showWaypoints", $event.target.checked)')
-            | Waypoints
+            | {{ $t('Waypoints') }}
 
       section
-        h3 Analysis
+        h3 {{ $t('Analysis') }}
         .options
           label.option
             input(
               type='checkbox',
               :checked='showThermals',
               @change='$emit("update:showThermals", $event.target.checked)')
-            | Thermals
+            | {{ $t('Thermals') }}
           label.option
             input(
               type='checkbox',
               :checked='showGlides',
               @change='$emit("update:showGlides", $event.target.checked)')
-            | Glides
+            | {{ $t('Glides') }}
           label.option
             input(
               type='checkbox',
               :checked='showDives',
               @change='$emit("update:showDives", $event.target.checked)')
-            | Dives
+            | {{ $t('Dives') }}
 
       section(v-if='flights.length')
-        h3 Flights
+        h3 {{ $t('Flights') }}
         .flight(v-for='f in flights', :key='f.id')
           .row
             .swatch(:style='{background: f.color}')
@@ -138,8 +138,8 @@ export default {
             :value='f.coloringKey',
             @change='$emit("update:coloring", {id: f.id, key: $event.target.value})')
             option(v-for='c in coloringsFor(f)', :key='c.key', :value='c.key')
-              | {{ c.label }}
-        button.clear-btn(@click='$emit("clear")') Clear all
+              | {{ $t(c.label) }}
+        button.clear-btn(@click='$emit("clear")') {{ $t('Clear all') }}
 </template>
 
 

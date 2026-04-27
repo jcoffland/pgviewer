@@ -5,6 +5,7 @@ import TrackControls  from './components/TrackControls.vue'
 import {parseIgc}     from './igc/index.js'
 import {pack, unpack} from './share/bundle.js'
 import {uploadBlob, fetchById} from './share/backend.js'
+import {LANGUAGES, setLang}    from './i18n/index.js'
 
 
 // Hash prefix for the share URL. Bumping this lets us evolve the format.
@@ -42,6 +43,8 @@ export default {
       // null | {state: 'uploading'} | {state: 'ok', url} | {state: 'error', msg}
       shareDialog:      null,
       loadingShare:     false,
+      langOpen:         false,
+      LANGUAGES,
     }
   },
 
@@ -125,6 +128,11 @@ export default {
       this.$refs.globe?.flyToAll()
     },
 
+    pickLang(code) {
+      setLang(code)
+      this.langOpen = false
+    },
+
     async createShareLink() {
       if (!this.flights.length) return
       this.shareDialog = {state: 'uploading'}
@@ -134,8 +142,9 @@ export default {
           text: f.text,
         })))
         if (MAX_SHARE_BYTES < blob.size) throw new Error(
-          'shared bundle too large (' + (blob.size / 1024 / 1024).toFixed(1)
-          + ' MiB; limit ' + (MAX_SHARE_BYTES / 1024 / 1024) + ' MiB)')
+          this.$t('shared bundle too large') + ' ('
+          + (blob.size / 1024 / 1024).toFixed(1) + ' MiB; '
+          + (MAX_SHARE_BYTES / 1024 / 1024) + ' MiB)')
         const id  = await uploadBlob(blob)
         const url = location.origin + location.pathname + SHARE_HASH_PREFIX + id
         history.replaceState(null, '', url)
@@ -231,13 +240,23 @@ export default {
         :hover-time='hoverTime',
         :show-empty='!loadingShare')
       .viewer-buttons
+        .lang-selector
+          button.icon(:title='"Language"', @click='langOpen = !langOpen')
+            | {{ $lang.value.toUpperCase() }}
+          .lang-menu(v-if='langOpen')
+            button.lang-option(
+              v-for='code in LANGUAGES',
+              :key='code',
+              :class='{active: $lang.value == code}',
+              @click='pickLang(code)')
+              | {{ code.toUpperCase() }}
         button.icon(
-          :title='isFullscreen ? "Exit fullscreen" : "Fullscreen"',
+          :title='isFullscreen ? $t("Exit fullscreen") : $t("Fullscreen")',
           @click='toggleFullscreen')
           | {{ isFullscreen ? '⇲' : '⛶' }}
         button.icon(
           :disabled='!flights.length',
-          title='Snap to view',
+          :title='$t("Snap to view")',
           @click='snapToView')
           | ⌖
 
@@ -250,26 +269,26 @@ export default {
   .modal-overlay(v-if='loadingShare')
     .modal
       .pacifier
-      .modal-text Loading flights…
+      .modal-text {{ $t('Loading flights…') }}
 
   .modal-overlay(v-if='shareDialog', @click.self='dismissShareDialog')
     .modal
       template(v-if='shareDialog.state == "uploading"')
         .pacifier
-        .modal-text Uploading flights…
+        .modal-text {{ $t('Uploading flights…') }}
 
       template(v-else-if='shareDialog.state == "ok"')
-        .modal-title Shareable link
+        .modal-title {{ $t('Shareable link') }}
         input.modal-url(:value='shareDialog.url', readonly, @focus='$event.target.select()')
         .modal-actions
-          button(@click='copyShareLink') {{ shareDialog.copied ? 'Copied' : 'Copy' }}
-          button(@click='dismissShareDialog') Close
+          button(@click='copyShareLink') {{ shareDialog.copied ? $t('Copied') : $t('Copy') }}
+          button(@click='dismissShareDialog') {{ $t('Close') }}
 
       template(v-else)
-        .modal-title Share failed
+        .modal-title {{ $t('Share failed') }}
         .modal-text {{ shareDialog.msg }}
         .modal-actions
-          button(@click='dismissShareDialog') Close
+          button(@click='dismissShareDialog') {{ $t('Close') }}
 </template>
 
 
@@ -319,6 +338,24 @@ export default {
           &:disabled
             opacity 0.4
             cursor not-allowed
+
+        .lang-selector
+          position relative
+
+          .lang-menu
+            position absolute
+            top 0
+            right calc(100% + 4px)
+            display flex
+            flex-direction row
+            gap 4px
+
+            .lang-option
+              font-size 13px
+
+              &.active
+                background rgba(80, 80, 100, 0.85)
+                border-color #aaa
 
   .modal-overlay
     position fixed
