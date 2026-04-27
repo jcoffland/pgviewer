@@ -30,6 +30,11 @@ lifecycle expiration.
    - Add a **Variable** (plain text, not secret): name `ALLOWED_ORIGINS`,
      value e.g. `http://localhost:5173,https://pgviewer.example.com`
      (comma-separated origins; include localhost for development).
+   - Add a **Variable** (or Secret): name `ADMIN_TOKEN`, value any random
+     string. Used to gate the `/list` page below.
+   - Add a **Variable**: name `APP_URL`, value the base URL of the
+     frontend (e.g. `https://pgviewer.example.com`). Used to build links
+     on the admin list page.
    Save and re-deploy.
 
 6. **Configure the frontend.**
@@ -47,3 +52,7 @@ lifecycle expiration.
 - `PUT /<hash>.bin` — store body. Returns `{ok: true, existed: true|false}`.
   Body capped at 2 MiB.
 - `GET /<hash>.bin` — return the stored bytes.
+- `GET /list?token=<ADMIN_TOKEN>` — admin HTML listing all objects, newest
+  first, each linking to the app at `APP_URL/#v1=<hash>`. Token in URL
+  leaks via history, logs, and referrers; intended for low-stakes admin
+  use only.

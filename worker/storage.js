@@ -51,7 +51,42 @@ export default {
       return json({error: 'origin not allowed'}, 403, '*')
 
     const url = new URL(request.url)
-    const m   = url.pathname.match(KEY_RE)
+
+    // Admin: list all stored objects as a simple HTML page.
+    // Token passed in URL is convenient but leaks via history/logs/referrers
+    // — fine for low-stakes admin use.
+    if (request.method == 'GET' && url.pathname == '/list') {
+      if (url.searchParams.get('token') != env.ADMIN_TOKEN)
+        return new Response('forbidden', {status: 403})
+      const list = await env.BUCKET.list()
+      const appBase = (env.APP_URL || '').replace(/\/+$/, '')
+      const rows = list.objects
+        .sort((a, b) => b.uploaded - a.uploaded)
+        .map(o => {
+          const id   = o.key.replace(/\.bin$/, '')
+          const href = appBase + '/#v1=' + id
+          const ts   = o.uploaded.toISOString().replace('T', ' ').slice(0, 19)
+          const kb   = (o.size / 1024).toFixed(1)
+          return `<tr><td><a target="_blank" href="${href}">${ts}</a></td><td>${kb} KB</td></tr>`
+        })
+        .join('\n')
+      const html = `<!doctype html>
+<html><head><meta charset="utf-8"><title>pgviewer storage</title>
+<style>
+  body {font-family: sans-serif; background: #1a1a1a; color: #ddd; padding: 20px}
+  table {border-collapse: collapse}
+  td {padding: 4px 12px 4px 0; font-family: monospace}
+  a {color: #88c}
+  .summary {color: #888; margin-bottom: 12px}
+</style>
+</head><body>
+<div class="summary">${list.objects.length} object${list.objects.length == 1 ? '' : 's'}, newest first</div>
+<table>${rows}</table>
+</body></html>`
+      return new Response(html, {headers: {'Content-Type': 'text/html'}})
+    }
+
+    const m = url.pathname.match(KEY_RE)
     if (!m) return json({error: 'bad path'}, 400, allowOrig)
     const key = m[1] + '.bin'
 
