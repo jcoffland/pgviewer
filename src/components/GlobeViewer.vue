@@ -3,6 +3,12 @@ import * as Cesium from 'cesium'
 import {aggregateBounds, buildScale, FlightLayer} from '../render/flightRender.js'
 
 
+// Pitch (radians) used by all programmatic camera moves. Negative = looking
+// down. -45° gives a good compromise between top-down map view and a
+// ground-level perspective showing terrain relief.
+const CAMERA_PITCH = -Cesium.Math.toRadians(45)
+
+
 // UI flag → entity-group name on the FlightLayer.
 const TOGGLE_MAP = {
   showAltitudeMarks: 'altitudeMarks',
@@ -151,7 +157,7 @@ export default {
     flyToSphere(sphere) {
       this.viewer.camera.flyToBoundingSphere(sphere, {
         duration: 1.0,
-        offset:   new Cesium.HeadingPitchRange(0, -Cesium.Math.PI_OVER_FOUR, sphere.radius * 1.75),
+        offset:   new Cesium.HeadingPitchRange(0, CAMERA_PITCH, sphere.radius * 1.75),
       })
     },
 
@@ -201,7 +207,7 @@ export default {
       const heading = Math.atan2(-axisN, axisE)
 
       // Camera basis in local ENU, with pitch = -45° and the chosen heading.
-      const pitch = -Math.PI / 4
+      const pitch = CAMERA_PITCH
       const cp = Math.cos(pitch), sp = Math.sin(pitch)
       const ch = Math.cos(heading), sh = Math.sin(heading)
       // Cesium's HeadingPitchRange: heading 0 = +y (north), pitch 0 = horizontal,

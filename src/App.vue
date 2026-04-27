@@ -152,7 +152,7 @@ export default {
           + (blob.size / 1024 / 1024).toFixed(1) + ' MiB; '
           + (MAX_SHARE_BYTES / 1024 / 1024) + ' MiB)')
         const id  = await uploadBlob(blob)
-        const url = location.origin + location.pathname + SHARE_HASH_PREFIX + id
+        const url = location.origin + location.pathname + location.search + SHARE_HASH_PREFIX + id
         history.replaceState(null, '', url)
         this.shareDialog = {state: 'ok', url}
       } catch (e) {
