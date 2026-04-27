@@ -11,13 +11,94 @@ export const GLIDE   = 2
 export const DIVE    = 3
 
 
-// Physical limits used by the outlier filter. Tuned for paragliders.
-const MAX_GROUND_SPEED  = 33   // m/s (~120 km/h, generous)
-const MAX_CLIMB         = 15   // m/s
-const MAX_SINK          = 20   // m/s (covers spirals)
-const MAX_HORIZ_ACCEL   = 5    // m/s^2
-const MAX_VERT_ACCEL    = 8    // m/s^2
-const ACCEL_GAP_LIMIT   = 10   // s; skip accel check across larger gaps
+// Outlier filter parameters (constant-velocity Kalman per axis).
+//
+// PROCESS_VAR is the variance of unmodeled acceleration. A paraglider's
+// real acceleration is rarely above 5 m/s^2, so sigma_a ~ 2 m/s^2 means
+// q ~ 4 m^2/s^4. This sets how fast the filter's uncertainty grows when
+// no measurement arrives.
+//
+// MEAS_VAR is the GPS measurement variance. Civilian GPS is ~5 m sigma
+// horizontal, ~10 m vertical, so r = 25 m^2 and 100 m^2.
+//
+// GATE is the chi-squared threshold for rejection: a measurement whose
+// Mahalanobis distance squared from the prediction exceeds GATE on any
+// axis is treated as an outlier and discarded. 16 = 4 sigma, lenient
+// enough to keep maneuvers, tight enough to drop most GPS spikes.
+const PROCESS_VAR_HORIZ = 4
+const PROCESS_VAR_VERT  = 4
+const MEAS_VAR_HORIZ    = 25
+const MEAS_VAR_VERT     = 100
+const INIT_VEL_VAR      = 100   // m^2/s^2; initial velocity uncertainty
+const GATE              = 16    // 4 sigma
+const R_EARTH           = 6371000
+
+
+// 1D constant-velocity Kalman filter. Tracks a single axis (position +
+// velocity); used in triplicate (east, north, up) by Track._filter.
+class Kalman1D {
+  constructor(processVar, measVar) {
+    this.q = processVar
+    this.r = measVar
+    this.x = 0     // position
+    this.v = 0     // velocity
+    // Covariance, row-major 2x2: [[a, b], [c, d]]
+    this.P = [0, 0, 0, 0]
+  }
+
+  init(z) {
+    this.x = z
+    this.v = 0
+    this.P = [this.r, 0, 0, INIT_VEL_VAR]
+  }
+
+  // Save/restore so a rejected measurement doesn't leave stale predictions.
+  snapshot() {return [this.x, this.v, ...this.P]}
+  restore(s) {this.x = s[0]; this.v = s[1]; this.P = s.slice(2)}
+
+  // Propagate state and covariance forward by dt seconds.
+  predict(dt) {
+    this.x += this.v * dt
+    const [a, b, c, d] = this.P
+    const a1 = a + dt * (b + c) + dt * dt * d
+    const b1 = b + dt * d
+    const c1 = c + dt * d
+    const d1 = d
+    const dt2 = dt * dt
+    const dt3 = dt2 * dt
+    const dt4 = dt3 * dt
+    this.P = [
+      a1 + this.q * dt4 / 4,
+      b1 + this.q * dt3 / 2,
+      c1 + this.q * dt3 / 2,
+      d1 + this.q * dt2,
+    ]
+  }
+
+  // Mahalanobis distance squared between a measurement and the prediction.
+  gate(z) {
+    const innov = z - this.x
+    const S = this.P[0] + this.r
+    return innov * innov / S
+  }
+
+  // Standard scalar Kalman update for a position measurement.
+  update(z) {
+    const S = this.P[0] + this.r
+    const k0 = this.P[0] / S
+    const k1 = this.P[2] / S
+    const innov = z - this.x
+    this.x += k0 * innov
+    this.v += k1 * innov
+    const [a, b, c, d] = this.P
+    this.P = [
+      a - k0 * a,
+      b - k0 * b,
+      c - k1 * a,
+      d - k1 * b,
+    ]
+  }
+}
 
 
 // Time-indexed flight log. Construct via `new Track(coords, opts)` where
@@ -36,39 +117,53 @@ export class Track {
   }
 
 
-  // Reject points whose transition from the last accepted point violates
-  // physical limits. A two-point history lets us also reject impossible
-  // accelerations, which catches the case of two consecutive GPS jumps
-  // that look plausible to a one-point check.
+  // Reject points that disagree with a constant-velocity Kalman prediction
+  // by more than GATE sigma on any of east/north/up. The filter's variance
+  // grows over rejected stretches so legitimate data after a gap is
+  // accepted again.
   static _filter(coords) {
-    const out  = []
-    let prev   = null
-    let prev2  = null
-    let prevSpeed = 0
-    let prevVspeed = 0
+    if (!coords.length) return []
+
+    // Project to local east/north meters around the first coord.
+    const lat0 = coords[0].lat
+    const lon0 = coords[0].lon
+    const cosLat0 = Math.cos(lat0)
+    const toEast  = c => R_EARTH * (c.lon - lon0) * cosLat0
+    const toNorth = c => R_EARTH * (c.lat - lat0)
+
+    const kE = new Kalman1D(PROCESS_VAR_HORIZ, MEAS_VAR_HORIZ)
+    const kN = new Kalman1D(PROCESS_VAR_HORIZ, MEAS_VAR_HORIZ)
+    const kZ = new Kalman1D(PROCESS_VAR_VERT,  MEAS_VAR_VERT)
+
+    const out = []
+    let prevDt = null
     for (const c of coords) {
-      if (!prev) {out.push(c); prev = c; continue}
-      const dt = (c.dt - prev.dt) / 1000
-      if (dt <= 0) continue
-      const ds = prev.distanceTo(c)
-      const dz = c.ele - prev.ele
-      const speed  = ds / dt
-      const vspeed = dz / dt
-      if (MAX_GROUND_SPEED < speed) continue
-      if (MAX_CLIMB < vspeed || vspeed < -MAX_SINK) continue
-
-      if (prev2 && (c.dt - prev2.dt) / 1000 < ACCEL_GAP_LIMIT) {
-        const horizAccel = Math.abs(speed - prevSpeed) / dt
-        const vertAccel  = Math.abs(vspeed - prevVspeed) / dt
-        if (MAX_HORIZ_ACCEL < horizAccel) continue
-        if (MAX_VERT_ACCEL  < vertAccel)  continue
+      if (!out.length) {
+        kE.init(toEast(c))
+        kN.init(toNorth(c))
+        kZ.init(c.ele)
+        out.push(c)
+        prevDt = c.dt
+        continue
       }
+      const dt = (c.dt - prevDt) / 1000
+      if (dt <= 0) continue
 
+      const sE = kE.snapshot()
+      const sN = kN.snapshot()
+      const sZ = kZ.snapshot()
+      kE.predict(dt); kN.predict(dt); kZ.predict(dt)
+
+      const ze = toEast(c)
+      const zn = toNorth(c)
+      const zz = c.ele
+      if (GATE < kE.gate(ze) || GATE < kN.gate(zn) || GATE < kZ.gate(zz)) {
+        kE.restore(sE); kN.restore(sN); kZ.restore(sZ)
+        continue
+      }
+      kE.update(ze); kN.update(zn); kZ.update(zz)
       out.push(c)
-      prev2 = prev
-      prev  = c
-      prevSpeed  = speed
-      prevVspeed = vspeed
+      prevDt = c.dt
     }
     return out
   }

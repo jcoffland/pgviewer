@@ -46,36 +46,56 @@ describe('Track filter', () => {
     expect(track.coords.length).toBe(3)
   })
 
-  it('drops points with implausible vertical speed', () => {
+  it('drops a gross spike in altitude after warmup', () => {
+    // 30 seconds of steady level flight at 1000m, then one point that
+    // jumps 200m up, then back to normal.
     const t0 = new Date(Date.UTC(2024, 0, 1, 10, 0, 0))
-    const coords = [
-      Coord.deg(45, 10,         1000, new Date(t0.getTime() + 0)),
-      Coord.deg(45, 10.0001,    1010, new Date(t0.getTime() + 1000)),
-      // 50 m climb in 1 sec → 50 m/s, far above 15 m/s limit
-      Coord.deg(45, 10.0002,    1060, new Date(t0.getTime() + 2000)),
-      Coord.deg(45, 10.0003,    1015, new Date(t0.getTime() + 3000)),
-    ]
+    const lonAt = m => 10 + m * (1 / 78000)
+    const coords = []
+    for (let i = 0; i < 30; i++)
+      coords.push(Coord.deg(
+        45, lonAt(7 * i), 1000, new Date(t0.getTime() + i * 1000)))
+    // Spike
+    coords.push(Coord.deg(
+      45, lonAt(7 * 30), 1200, new Date(t0.getTime() + 30000)))
+    // Recovery
+    coords.push(Coord.deg(
+      45, lonAt(7 * 31), 1000, new Date(t0.getTime() + 31000)))
     const track = new Track(coords)
-    expect(track.coords.length).toBe(3)
+    // 30 steady + 1 recovery; spike rejected.
+    expect(track.coords.length).toBe(31)
   })
 
-  it('drops points with impossible acceleration', () => {
-    // Steady 7 m/s ground speed for two seconds, then a sudden jump
-    // creating a one-second 25 m/s leg (still under speed limit) — the
-    // accel is 18 m/s^2, far over the 5 m/s^2 limit.
+  it('drops a gross spike in horizontal position after warmup', () => {
     const t0 = new Date(Date.UTC(2024, 0, 1, 10, 0, 0))
-    const lonAt = m => 10 + m * (1 / 78000)  // approx m east at lat 45
-    const coords = [
-      Coord.deg(45, lonAt(0),  1000, new Date(t0.getTime() + 0)),
-      Coord.deg(45, lonAt(7),  1000, new Date(t0.getTime() + 1000)),
-      Coord.deg(45, lonAt(14), 1000, new Date(t0.getTime() + 2000)),
-      // jump to 25 m/s in next second: accel = 18 m/s^2
-      Coord.deg(45, lonAt(39), 1000, new Date(t0.getTime() + 3000)),
-      // next normal leg at 7 m/s
-      Coord.deg(45, lonAt(46), 1000, new Date(t0.getTime() + 4000)),
-    ]
+    const lonAt = m => 10 + m * (1 / 78000)
+    const coords = []
+    for (let i = 0; i < 30; i++)
+      coords.push(Coord.deg(
+        45, lonAt(7 * i), 1000, new Date(t0.getTime() + i * 1000)))
+    // Spike: 500m east of where we should be
+    coords.push(Coord.deg(
+      45, lonAt(7 * 30 + 500), 1000, new Date(t0.getTime() + 30000)))
+    coords.push(Coord.deg(
+      45, lonAt(7 * 31), 1000, new Date(t0.getTime() + 31000)))
     const track = new Track(coords)
-    expect(track.coords.length).toBe(4)  // dropped the jump
+    expect(track.coords.length).toBe(31)
+  })
+
+  it('recovers after a long gap with no accepted measurements', () => {
+    // Steady flight, then 60 seconds later resume far away. The Kalman
+    // predicted variance has grown enough that the new point is accepted.
+    const t0 = new Date(Date.UTC(2024, 0, 1, 10, 0, 0))
+    const lonAt = m => 10 + m * (1 / 78000)
+    const coords = []
+    for (let i = 0; i < 30; i++)
+      coords.push(Coord.deg(
+        45, lonAt(7 * i), 1000, new Date(t0.getTime() + i * 1000)))
+    // Resume 60s later; the pilot really is somewhere new
+    coords.push(Coord.deg(
+      45, lonAt(7 * 30 + 400), 1050, new Date(t0.getTime() + 90000)))
+    const track = new Track(coords)
+    expect(track.coords.length).toBe(31)  // resumed point accepted
   })
 })
 
