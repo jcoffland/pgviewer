@@ -32,6 +32,14 @@ export default {
   },
 
   methods: {
+    legendFor(f) {
+      const t = f.track
+      const parts = []
+      if (t.pilotName)  parts.push(t.pilotName)
+      if (t.gliderType) parts.push(t.gliderType)
+      return parts.length ? parts.join(' · ') : t.filename
+    },
+
     build() {
       if (this.plot) {this.plot.destroy(); this.plot = null}
       if (this.collapsed || !this.flights.length) return
@@ -119,6 +127,10 @@ export default {
 .altitude-chart(:class='{collapsed}')
   .header
     .label Altitude
+    .legend(v-if='flights.length')
+      .legend-item(v-for='f in flights', :key='f.id')
+        .dash(:style='{background: f.color}')
+        .legend-text {{ legendFor(f) }}
     button.icon(
       :title='collapsed ? "Expand" : "Collapse"',
       @click='$emit("update:collapsed", !collapsed)')
@@ -155,11 +167,36 @@ export default {
     height 24px
 
     .label
-      flex 1
       font-size 11px
       text-transform uppercase
       letter-spacing 0.5px
       color #888
+
+    .legend
+      flex 1
+      display flex
+      flex-wrap wrap
+      gap 4px 12px
+      align-items center
+      font-size 11px
+      color #aaa
+      overflow hidden
+
+      .legend-item
+        display flex
+        align-items center
+        gap 6px
+        min-width 0
+
+      .dash
+        width 14px
+        height 2px
+        flex-shrink 0
+
+      .legend-text
+        white-space nowrap
+        overflow hidden
+        text-overflow ellipsis
 
   .body
     flex 1
@@ -181,6 +218,7 @@ export default {
     pointer-events none
 
   button.icon
+    margin-left auto
     background transparent
     border 1px solid transparent
     padding 2px 6px

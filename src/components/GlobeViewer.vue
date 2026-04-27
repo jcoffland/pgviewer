@@ -25,13 +25,14 @@ export default {
     showGlides:        Boolean,
     showDives:         Boolean,
     hoverTime:         {type: Number, default: null},
+    showEmpty:         {type: Boolean, default: true},
   },
 
   data() {
     return {
       viewer:      null,
       layers:      new Map(),  // flight id → FlightLayer
-      hoverEntity: null,
+      hoverEntities: [],
     }
   },
 
@@ -150,22 +151,23 @@ export default {
     flyToAll() {this.flyToLayers([...this.layers.values()])},
 
     syncHover() {
-      if (this.hoverEntity) {
-        this.viewer.entities.remove(this.hoverEntity)
-        this.hoverEntity = null
-      }
+      for (const e of this.hoverEntities) this.viewer.entities.remove(e)
+      this.hoverEntities = []
       if (this.hoverTime == null || !this.flights.length) return
+      const t  = this.hoverTime | 0
       const dt = new Date(this.hoverTime * 1000)
-      const c  = this.flights[0].track.coordAt(dt)
-      this.hoverEntity = this.viewer.entities.add({
-        position: Cesium.Cartesian3.fromDegrees(c.lonDeg, c.latDeg, c.ele),
-        point: {
-          pixelSize:    10,
-          color:        Cesium.Color.YELLOW,
-          outlineColor: Cesium.Color.BLACK,
-          outlineWidth: 2,
-        },
-      })
+      for (const f of this.flights) {
+        const tt = f.track.t
+        if (t < tt[0] || tt[tt.length - 1] < t) continue
+        const c = f.track.coordAt(dt)
+        this.hoverEntities.push(this.viewer.entities.add({
+          position: Cesium.Cartesian3.fromDegrees(c.lonDeg, c.latDeg, c.ele),
+          point: {
+            pixelSize:    10,
+            color:        Cesium.Color.fromCssColorString(f.color),
+          },
+        }))
+      }
     },
   },
 }
@@ -174,7 +176,7 @@ export default {
 
 <template lang="pug">
 .globe-viewer
-  .empty(v-if='!flights.length') Drop one or more IGC files to begin.
+  .empty(v-if='showEmpty && !flights.length') Drop one or more IGC files to begin.
   .container(ref='container')
 </template>
 
@@ -195,7 +197,9 @@ export default {
     display flex
     align-items center
     justify-content center
-    color #777
+    color #ddd
+    font-size 22px
+    text-shadow 0 0 8px rgba(0, 0, 0, 0.95), 0 0 2px rgba(0, 0, 0, 0.95)
     pointer-events none
     z-index 2
 </style>

@@ -41,6 +41,7 @@ export default {
       isFullscreen:     false,
       // null | {state: 'uploading'} | {state: 'ok', url} | {state: 'error', msg}
       shareDialog:      null,
+      loadingShare:     false,
     }
   },
 
@@ -159,7 +160,8 @@ export default {
       const hash = window.location.hash || ''
       if (!hash.startsWith(SHARE_HASH_PREFIX)) return
       const id = hash.slice(SHARE_HASH_PREFIX.length)
-      this.parseErrors = []
+      this.parseErrors  = []
+      this.loadingShare = true
       try {
         const blob    = await fetchById(id)
         const flights = await unpack(blob)
@@ -177,6 +179,8 @@ export default {
         if (added.length) this.flights = [...this.flights, ...added]
       } catch (e) {
         this.parseErrors.push({name: 'shared link', msg: e.message})
+      } finally {
+        this.loadingShare = false
       }
     },
   },
@@ -223,7 +227,8 @@ export default {
         :show-thermals='showThermals',
         :show-glides='showGlides',
         :show-dives='showDives',
-        :hover-time='hoverTime')
+        :hover-time='hoverTime',
+        :show-empty='!loadingShare')
       .viewer-buttons
         button.icon(
           :title='isFullscreen ? "Exit fullscreen" : "Fullscreen"',
@@ -240,6 +245,11 @@ export default {
     :collapsed='collapsedChart',
     @update:collapsed='collapsedChart = $event',
     @hover='hoverTime = $event')
+
+  .modal-overlay(v-if='loadingShare')
+    .modal
+      .pacifier
+      .modal-text Loading flights…
 
   .modal-overlay(v-if='shareDialog', @click.self='dismissShareDialog')
     .modal
