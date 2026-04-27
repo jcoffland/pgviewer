@@ -5,6 +5,8 @@ export default {
   'Layers':                               'Ebenen',
   'Analysis':                             'Analyse',
   'Flights':                              'Flüge',
+  'Tracks':                               'Tracks',
+  'About':                                'Über',
 
   'Shadow':                               'Schatten',
   'Altitude marks':                       'Höhenmarken',

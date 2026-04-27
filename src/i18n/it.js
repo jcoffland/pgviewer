@@ -5,6 +5,8 @@ export default {
   'Layers':                               'Livelli',
   'Analysis':                             'Analisi',
   'Flights':                              'Voli',
+  'Tracks':                               'Tracce',
+  'About':                                'Informazioni',
 
   'Shadow':                               'Ombra',
   'Altitude marks':                       'Indicatori di quota',

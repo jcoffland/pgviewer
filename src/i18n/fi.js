@@ -6,6 +6,8 @@ export default {
   'Layers':                               'Tasot',
   'Analysis':                             'Analyysi',
   'Flights':                              'Lennot',
+  'Tracks':                               'Reitit',
+  'About':                                'Tietoja',
 
   // Layer toggles
   'Shadow':                               'Varjo',

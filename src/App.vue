@@ -45,6 +45,7 @@ export default {
       loadingShare:     false,
       langOpen:         false,
       settingsOpen:     false,
+      aboutOpen:        false,
       LANGUAGES,
     }
   },
@@ -254,6 +255,10 @@ export default {
           :title='$t("Settings")',
           @click='settingsOpen = !settingsOpen')
           | ⚙
+        button.icon(
+          :title='$t("About")',
+          @click='aboutOpen = !aboutOpen')
+          | ⓘ
 
   altitude-chart.chart(
     :flights='flights',
@@ -262,6 +267,19 @@ export default {
     @update:collapsed='collapsedChart = $event',
     @hover='hoverTime = $event',
     @zoom-to-fit='zoomToHover')
+
+  .modal-overlay(v-if='aboutOpen', @click.self='aboutOpen = false')
+    .modal.about-modal
+      .modal-title PG Viewer
+      .about-body
+        p {{ $t('A 3D viewer for paragliding flight tracks (IGC files). Drag and drop one or more IGC files into the side panel, or click to choose. Tracks render on a satellite globe with terrain.') }}
+        p {{ $t('Color tracks by climb rate, altitude, energy, ground speed, time, or solid color from the dropdown under each loaded track. Hidden removes the polyline while keeping marks and analysis visible.') }}
+        p {{ $t('Use the gear icon to toggle layers (shadow, altitude/time marks, waypoints) and analysis overlays (thermals, glides, dives). The crosshair button frames all loaded tracks; double-click the altitude chart to frame the current hover positions.') }}
+        p {{ $t('Hover the altitude chart to see each pilot\'s position on the globe. The hover persists when the cursor leaves the chart.') }}
+        p {{ $t('Create shareable link uploads the loaded tracks to deduplicated storage and produces a URL that opens the same set of tracks for anyone with the link.') }}
+      .about-author Joseph Coffland
+      .modal-actions
+        button(@click='aboutOpen = false') {{ $t('Close') }}
 
   .modal-overlay(v-if='settingsOpen', @click.self='settingsOpen = false')
     .modal.settings-modal
@@ -463,6 +481,26 @@ export default {
 
           input
             cursor pointer
+
+    .about-modal
+      max-width 480px
+
+      .about-body
+        font-size 13px
+        color #ccc
+        display flex
+        flex-direction column
+        gap 8px
+
+        p
+          margin 0
+          line-height 1.5
+
+      .about-author
+        font-size 12px
+        color #888
+        text-align right
+        font-style italic
 
 @keyframes spin
   to

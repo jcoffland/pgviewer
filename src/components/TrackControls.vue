@@ -68,7 +68,6 @@ export default {
 
     .body
       section
-        h3 {{ $t('Files') }}
         file-dropzone(@files='$emit("files", $event)')
         button.share-btn(:disabled='!flights.length', @click='$emit("share")')
           | {{ $t('Create shareable link') }}
@@ -77,7 +76,7 @@ export default {
             | {{ e.name }}: {{ e.msg }}
 
       section(v-if='flights.length')
-        h3 {{ $t('Flights') }}
+        h3 {{ $t('Tracks') }}
         .flight(v-for='f in flights', :key='f.id')
           .row
             .swatch(:style='{background: f.color}')
