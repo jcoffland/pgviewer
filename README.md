@@ -31,6 +31,12 @@ globe and terrain won't load.
 The token is bundled into the build, so use a token scoped to the assets
 this app uses (Bing imagery, World Terrain).
 
+### Share feature (optional)
+
+To enable shareable links, deploy the Cloudflare Worker in `worker/` and
+set `VITE_STORAGE_URL` in `.env.local`. See `worker/README.md` for setup.
+Without this, the app works fine but the share button reports an error.
+
 ## Tests
 
 ```sh

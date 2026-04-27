@@ -40,6 +40,7 @@ export default {
     'update:collapsed',
     'remove',
     'files',
+    'share',
   ],
 
   data() {
@@ -69,6 +70,8 @@ export default {
       section
         h3 Files
         file-dropzone(@files='$emit("files", $event)')
+        button.share-btn(:disabled='!flights.length', @click='$emit("share")')
+          | Create shareable link
         .errors(v-if='parseErrors.length')
           .error(v-for='e in parseErrors', :key='e.name')
             | {{ e.name }}: {{ e.msg }}
@@ -187,6 +190,16 @@ export default {
 
     .error
       margin-top 2px
+
+  .share-btn
+    margin-top 8px
+    width 100%
+    padding 6px 10px
+    font-size 12px
+
+    &:disabled
+      opacity 0.4
+      cursor not-allowed
 
   button.icon
     background transparent

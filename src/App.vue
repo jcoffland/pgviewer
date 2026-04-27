@@ -3,6 +3,12 @@ import GlobeViewer    from './components/GlobeViewer.vue'
 import AltitudeChart  from './components/AltitudeChart.vue'
 import TrackControls  from './components/TrackControls.vue'
 import {parseIgc}     from './igc/index.js'
+import {pack, unpack} from './share/bundle.js'
+import {uploadBlob, fetchById} from './share/backend.js'
+
+
+// Hash prefix for the share URL. Bumping this lets us evolve the format.
+const SHARE_HASH_PREFIX = '#v1='
 
 
 // Per-flight color cycle.
@@ -30,11 +36,14 @@ export default {
       collapsedSide:    false,
       collapsedChart:   false,
       isFullscreen:     false,
+      // null | {state: 'uploading'} | {state: 'ok', url} | {state: 'error', msg}
+      shareDialog:      null,
     }
   },
 
   mounted() {
     document.addEventListener('fullscreenchange', this.onFullscreenChange)
+    this.loadFromHash()
   },
 
   beforeUnmount() {
@@ -45,19 +54,26 @@ export default {
     async addFiles(files) {
       this.parseErrors = []
       const added = []
+      let baseId  = this.nextId()
       for (const file of files) {
         try {
           const text  = await file.text()
-          const track = parseIgc(text, file.name)
-          const id    = this.nextId() + added.length
-          const color = FLIGHT_COLORS[
-            (this.flights.length + added.length) % FLIGHT_COLORS.length]
-          added.push({id, track, color, coloringKey: 'climb'})
+          const index = this.flights.length + added.length
+          const id    = baseId + added.length
+          added.push(this.makeFlight(file.name, text, id, index))
         } catch (e) {
           this.parseErrors.push({name: file.name, msg: e.message})
         }
       }
       if (added.length) this.flights = [...this.flights, ...added]
+    },
+
+    // Build a flight object from raw IGC text. `index` is the position
+    // in the resulting array, used for color cycling.
+    makeFlight(name, text, id, index) {
+      const track = parseIgc(text, name)
+      const color = FLIGHT_COLORS[index % FLIGHT_COLORS.length]
+      return {id, track, color, coloringKey: 'climb', text}
     },
 
     removeFlight(id) {
@@ -80,6 +96,61 @@ export default {
 
     onFullscreenChange() {
       this.isFullscreen = !!document.fullscreenElement
+    },
+
+    async createShareLink() {
+      if (!this.flights.length) return
+      this.shareDialog = {state: 'uploading'}
+      try {
+        const blob = await pack(this.flights.map(f => ({
+          name: f.track.filename,
+          text: f.text,
+        })))
+        const id = await uploadBlob(blob)
+        this.shareDialog = {
+          state: 'ok',
+          url:   location.origin + location.pathname + SHARE_HASH_PREFIX + id,
+        }
+      } catch (e) {
+        this.shareDialog = {state: 'error', msg: e.message}
+      }
+    },
+
+    async copyShareLink() {
+      if (this.shareDialog?.state != 'ok') return
+      try {
+        await navigator.clipboard.writeText(this.shareDialog.url)
+        this.shareDialog = {...this.shareDialog, copied: true}
+      } catch (e) {
+        // Fallback: select the text in the input.
+      }
+    },
+
+    dismissShareDialog() {this.shareDialog = null},
+
+    async loadFromHash() {
+      const hash = window.location.hash || ''
+      if (!hash.startsWith(SHARE_HASH_PREFIX)) return
+      const id = hash.slice(SHARE_HASH_PREFIX.length)
+      this.parseErrors = []
+      try {
+        const blob    = await fetchById(id)
+        const flights = await unpack(blob)
+        const added   = []
+        let baseId    = this.nextId()
+        for (const f of flights) {
+          try {
+            const index = this.flights.length + added.length
+            const newId = baseId + added.length
+            added.push(this.makeFlight(f.name, f.text, newId, index))
+          } catch (e) {
+            this.parseErrors.push({name: f.name, msg: e.message})
+          }
+        }
+        if (added.length) this.flights = [...this.flights, ...added]
+      } catch (e) {
+        this.parseErrors.push({name: 'shared link', msg: e.message})
+      }
     },
   },
 }
@@ -110,6 +181,7 @@ export default {
       @update:show-dives='showDives = $event',
       @update:coloring='setFlightColoring',
       @update:collapsed='collapsedSide = $event',
+      @share='createShareLink',
       @remove='removeFlight')
 
     .viewer-area
@@ -133,6 +205,25 @@ export default {
     :collapsed='collapsedChart',
     @update:collapsed='collapsedChart = $event',
     @hover='hoverTime = $event')
+
+  .modal-overlay(v-if='shareDialog', @click.self='dismissShareDialog')
+    .modal
+      template(v-if='shareDialog.state == "uploading"')
+        .pacifier
+        .modal-text Uploading flights…
+
+      template(v-else-if='shareDialog.state == "ok"')
+        .modal-title Shareable link
+        input.modal-url(:value='shareDialog.url', readonly, @focus='$event.target.select()')
+        .modal-actions
+          button(@click='copyShareLink') {{ shareDialog.copied ? 'Copied' : 'Copy' }}
+          button(@click='dismissShareDialog') Close
+
+      template(v-else)
+        .modal-title Share failed
+        .modal-text {{ shareDialog.msg }}
+        .modal-actions
+          button(@click='dismissShareDialog') Close
 </template>
 
 
@@ -173,4 +264,60 @@ export default {
         &:hover
           background rgba(40, 40, 40, 0.85)
           border-color #888
+
+  .modal-overlay
+    position fixed
+    inset 0
+    background rgba(0, 0, 0, 0.6)
+    display flex
+    align-items center
+    justify-content center
+    z-index 100
+
+    .modal
+      background #222
+      border 1px solid #444
+      border-radius 4px
+      padding 16px 20px
+      min-width 360px
+      max-width 90vw
+      display flex
+      flex-direction column
+      gap 12px
+
+      .modal-title
+        font-size 14px
+        font-weight 600
+
+      .modal-text
+        font-size 13px
+        color #ccc
+
+      .modal-url
+        font-family monospace
+        font-size 12px
+        background #1a1a1a
+        color #eee
+        border 1px solid #444
+        border-radius 3px
+        padding 6px 8px
+        width 100%
+
+      .modal-actions
+        display flex
+        justify-content flex-end
+        gap 8px
+
+      .pacifier
+        width 28px
+        height 28px
+        align-self center
+        border 3px solid #444
+        border-top-color #88c
+        border-radius 50%
+        animation spin 0.8s linear infinite
+
+@keyframes spin
+  to
+    transform rotate(360deg)
 </style>
