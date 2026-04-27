@@ -160,10 +160,88 @@ export default {
     flyToHover() {
       if (!this.hoverEntities.length) return
       const positions = this.hoverEntities.map(e => e.position.getValue())
-      const sphere = Cesium.BoundingSphere.fromPoints(positions)
-      // Single point → fromPoints gives radius 0; use a sensible minimum.
-      if (sphere.radius < 100) sphere.radius = 100
-      this.flyToSphere(sphere)
+      this.flyToPoints(positions)
+    },
+
+    // Fit a set of 3D points in the camera view at fixed pitch -45°.
+    // Heading is chosen so the points spread along screen-x (PCA on the
+    // east/north plane). Range is computed from the actual FOV so all
+    // points fit with a small margin.
+    flyToPoints(points) {
+      if (!points.length) return
+
+      // Centroid in ECEF.
+      const centroid = points.reduce(
+        (a, p) => Cesium.Cartesian3.add(a, p, new Cesium.Cartesian3()),
+        new Cesium.Cartesian3())
+      Cesium.Cartesian3.divideByScalar(centroid, points.length, centroid)
+
+      // ENU basis at centroid, then convert points to local (e, n, u).
+      const enuToEcef = Cesium.Transforms.eastNorthUpToFixedFrame(centroid)
+      const ecefToEnu = Cesium.Matrix4.inverse(enuToEcef, new Cesium.Matrix4())
+      const local = points.map(p => Cesium.Matrix4.multiplyByPoint(
+        ecefToEnu, p, new Cesium.Cartesian3()))
+
+      // PCA on the 2D (e, n) projection to find the principal axis.
+      let see = 0, snn = 0, sen = 0
+      for (const v of local) {see += v.x * v.x; snn += v.y * v.y; sen += v.x * v.y}
+      // Eigenvector of largest eigenvalue of [[see, sen], [sen, snn]].
+      const tr   = see + snn
+      const det  = see * snn - sen * sen
+      const disc = Math.sqrt(Math.max(0, tr * tr / 4 - det))
+      const lam  = tr / 2 + disc
+      let axisE  = sen
+      let axisN  = lam - see
+      const axisLen = Math.hypot(axisE, axisN)
+      if (axisLen < 1e-6) {axisE = 0; axisN = 1}
+      else                {axisE /= axisLen; axisN /= axisLen}
+      // Heading = perpendicular to the principal axis, so points spread
+      // across the screen rather than into/out of it. Cesium heading is
+      // measured from north (y), increasing east (x).
+      const heading = Math.atan2(-axisN, axisE)
+
+      // Camera basis in local ENU, with pitch = -45° and the chosen heading.
+      const pitch = -Math.PI / 4
+      const cp = Math.cos(pitch), sp = Math.sin(pitch)
+      const ch = Math.cos(heading), sh = Math.sin(heading)
+      // Cesium's HeadingPitchRange: heading 0 = +y (north), pitch 0 = horizontal,
+      // negative pitch = looking down. View direction (camera→target) in ENU:
+      const view  = new Cesium.Cartesian3(sh * cp,  ch * cp,  sp)
+      const right = new Cesium.Cartesian3(ch,      -sh,        0)
+      // up = right × view
+      const upVec = Cesium.Cartesian3.cross(right, view, new Cesium.Cartesian3())
+
+      // Cesium's fov applies to the larger viewport dimension.
+      const cam    = this.viewer.camera
+      const fov    = cam.frustum.fov
+      const aspect = cam.frustum.aspectRatio || 1
+      const tanLarger  = Math.tan(fov / 2)
+      const tanSmaller = aspect >= 1 ? tanLarger / aspect : tanLarger * aspect
+      const tanH = aspect >= 1 ? tanLarger : tanSmaller
+      const tanV = aspect >= 1 ? tanSmaller : tanLarger
+
+      // For each point, compute screen offsets and depth (relative to centroid)
+      // and the range needed so the point sits at the FOV edge.
+      const MARGIN = 1.05
+      let needed = 0
+      for (const v of local) {
+        const sx = Cesium.Cartesian3.dot(v, right)
+        const sy = Cesium.Cartesian3.dot(v, upVec)
+        const sz = Cesium.Cartesian3.dot(v, view)
+        const rx = Math.abs(sx) * MARGIN / tanH + sz
+        const ry = Math.abs(sy) * MARGIN / tanV + sz
+        if (needed < rx) needed = rx
+        if (needed < ry) needed = ry
+      }
+      // Sanity floor — for a single point or tightly clustered points the
+      // computation can yield a tiny range; keep the camera at least 100m back.
+      if (needed < 100) needed = 100
+
+      const sphere = new Cesium.BoundingSphere(centroid, 0)
+      this.viewer.camera.flyToBoundingSphere(sphere, {
+        duration: 1.0,
+        offset:   new Cesium.HeadingPitchRange(heading, pitch, needed),
+      })
     },
 
     syncHover() {
