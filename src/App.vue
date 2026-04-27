@@ -80,7 +80,8 @@ export default {
     makeFlight(name, text, id, index) {
       const track = parseIgc(text, name)
       const color = FLIGHT_COLORS[index % FLIGHT_COLORS.length]
-      return {id, track, color, coloringKey: 'climb', text}
+      const coloringKey = index == 0 ? 'climb' : 'solid_color'
+      return {id, track, color, coloringKey, text}
     },
 
     removeFlight(id) {
