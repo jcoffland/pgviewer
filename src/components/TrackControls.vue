@@ -18,25 +18,11 @@ export default {
 
   props: {
     flights:           {type: Array, required: true},
-    showShadow:        Boolean,
-    showAltitudeMarks: Boolean,
-    showTimeMarks:     Boolean,
-    showWaypoints:     Boolean,
-    showThermals:      Boolean,
-    showGlides:        Boolean,
-    showDives:         Boolean,
     collapsed:         Boolean,
     parseErrors:       {type: Array, default: () => []},
   },
 
   emits: [
-    'update:showShadow',
-    'update:showAltitudeMarks',
-    'update:showTimeMarks',
-    'update:showWaypoints',
-    'update:showThermals',
-    'update:showGlides',
-    'update:showDives',
     'update:coloring',
     'update:collapsed',
     'remove',
@@ -77,56 +63,6 @@ export default {
         .errors(v-if='parseErrors.length')
           .error(v-for='e in parseErrors', :key='e.name')
             | {{ e.name }}: {{ e.msg }}
-
-      section
-        h3 {{ $t('Layers') }}
-        .options
-          label.option
-            input(
-              type='checkbox',
-              :checked='showShadow',
-              @change='$emit("update:showShadow", $event.target.checked)')
-            | {{ $t('Shadow') }}
-          label.option
-            input(
-              type='checkbox',
-              :checked='showAltitudeMarks',
-              @change='$emit("update:showAltitudeMarks", $event.target.checked)')
-            | {{ $t('Altitude marks') }}
-          label.option
-            input(
-              type='checkbox',
-              :checked='showTimeMarks',
-              @change='$emit("update:showTimeMarks", $event.target.checked)')
-            | {{ $t('Time marks') }}
-          label.option
-            input(
-              type='checkbox',
-              :checked='showWaypoints',
-              @change='$emit("update:showWaypoints", $event.target.checked)')
-            | {{ $t('Waypoints') }}
-
-      section
-        h3 {{ $t('Analysis') }}
-        .options
-          label.option
-            input(
-              type='checkbox',
-              :checked='showThermals',
-              @change='$emit("update:showThermals", $event.target.checked)')
-            | {{ $t('Thermals') }}
-          label.option
-            input(
-              type='checkbox',
-              :checked='showGlides',
-              @change='$emit("update:showGlides", $event.target.checked)')
-            | {{ $t('Glides') }}
-          label.option
-            input(
-              type='checkbox',
-              :checked='showDives',
-              @change='$emit("update:showDives", $event.target.checked)')
-            | {{ $t('Dives') }}
 
       section(v-if='flights.length')
         h3 {{ $t('Flights') }}

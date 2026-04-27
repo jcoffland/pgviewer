@@ -38,6 +38,7 @@ export default {
   'Fullscreen':                           'Koko näyttö',
   'Exit fullscreen':                      'Poistu koko näytöltä',
   'Snap to view':                         'Sovita näkymään',
+  'Settings':                             'Asetukset',
   'Expand':                               'Laajenna',
   'Collapse':                             'Tiivistä',
 

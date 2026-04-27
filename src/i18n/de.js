@@ -32,6 +32,7 @@ export default {
   'Fullscreen':                           'Vollbild',
   'Exit fullscreen':                      'Vollbild beenden',
   'Snap to view':                         'An Ansicht anpassen',
+  'Settings':                             'Einstellungen',
   'Expand':                               'Erweitern',
   'Collapse':                             'Einklappen',
 

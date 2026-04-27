@@ -44,6 +44,7 @@ export default {
       shareDialog:      null,
       loadingShare:     false,
       langOpen:         false,
+      settingsOpen:     false,
       LANGUAGES,
     }
   },
@@ -203,23 +204,9 @@ export default {
   .main
     track-controls.controls(
       :flights='flights',
-      :show-shadow='showShadow',
-      :show-altitude-marks='showAltitudeMarks',
-      :show-time-marks='showTimeMarks',
-      :show-waypoints='showWaypoints',
-      :show-thermals='showThermals',
-      :show-glides='showGlides',
-      :show-dives='showDives',
       :collapsed='collapsedSide',
       :parse-errors='parseErrors',
       @files='addFiles',
-      @update:show-shadow='showShadow = $event',
-      @update:show-altitude-marks='showAltitudeMarks = $event',
-      @update:show-time-marks='showTimeMarks = $event',
-      @update:show-waypoints='showWaypoints = $event',
-      @update:show-thermals='showThermals = $event',
-      @update:show-glides='showGlides = $event',
-      @update:show-dives='showDives = $event',
       @update:coloring='setFlightColoring',
       @update:collapsed='collapsedSide = $event',
       @share='createShareLink',
@@ -259,12 +246,50 @@ export default {
           :title='$t("Snap to view")',
           @click='snapToView')
           | ⌖
+        button.icon(
+          :title='$t("Settings")',
+          @click='settingsOpen = !settingsOpen')
+          | ⚙
 
   altitude-chart.chart(
     :flights='flights',
     :collapsed='collapsedChart',
     @update:collapsed='collapsedChart = $event',
     @hover='hoverTime = $event')
+
+  .modal-overlay(v-if='settingsOpen', @click.self='settingsOpen = false')
+    .modal.settings-modal
+      section
+        h3 {{ $t('Layers') }}
+        .options
+          label.option
+            input(type='checkbox', v-model='showShadow')
+            | {{ $t('Shadow') }}
+          label.option
+            input(type='checkbox', v-model='showAltitudeMarks')
+            | {{ $t('Altitude marks') }}
+          label.option
+            input(type='checkbox', v-model='showTimeMarks')
+            | {{ $t('Time marks') }}
+          label.option
+            input(type='checkbox', v-model='showWaypoints')
+            | {{ $t('Waypoints') }}
+
+      section
+        h3 {{ $t('Analysis') }}
+        .options
+          label.option
+            input(type='checkbox', v-model='showThermals')
+            | {{ $t('Thermals') }}
+          label.option
+            input(type='checkbox', v-model='showGlides')
+            | {{ $t('Glides') }}
+          label.option
+            input(type='checkbox', v-model='showDives')
+            | {{ $t('Dives') }}
+
+      .modal-actions
+        button(@click='settingsOpen = false') {{ $t('Close') }}
 
   .modal-overlay(v-if='loadingShare')
     .modal
@@ -408,6 +433,30 @@ export default {
         border-top-color #88c
         border-radius 50%
         animation spin 0.8s linear infinite
+
+    .settings-modal
+      section
+        h3
+          margin 0 0 8px 0
+          font-size 11px
+          text-transform uppercase
+          letter-spacing 0.5px
+          color #888
+
+        .options
+          display flex
+          flex-direction column
+          gap 4px
+
+        .option
+          display flex
+          align-items center
+          gap 6px
+          font-size 13px
+          cursor pointer
+
+          input
+            cursor pointer
 
 @keyframes spin
   to
