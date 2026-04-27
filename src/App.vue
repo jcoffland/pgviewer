@@ -270,13 +270,37 @@ export default {
 
   .modal-overlay(v-if='aboutOpen', @click.self='aboutOpen = false')
     .modal.about-modal
-      .modal-title PG Viewer
+      .about-header
+        span.about-icon 🪂
+        .modal-title PG Viewer
       .about-body
-        p {{ $t('A 3D viewer for paragliding flight tracks (IGC files). Drag and drop one or more IGC files into the side panel, or click to choose. Tracks render on a satellite globe with terrain.') }}
-        p {{ $t('Color tracks by climb rate, altitude, energy, ground speed, time, or solid color from the dropdown under each loaded track. Hidden removes the polyline while keeping marks and analysis visible.') }}
-        p {{ $t('Use the gear icon to toggle layers (shadow, altitude/time marks, waypoints) and analysis overlays (thermals, glides, dives). The crosshair button frames all loaded tracks; double-click the altitude chart to frame the current hover positions.') }}
-        p {{ $t('Hover the altitude chart to see each pilot\'s position on the globe. The hover persists when the cursor leaves the chart.') }}
-        p {{ $t('Create shareable link uploads the loaded tracks to deduplicated storage and produces a URL that opens the same set of tracks for anyone with the link.') }}
+        section
+          h4 {{ $t('What it is') }}
+          p {{ $t('A 3D viewer for paragliding flight tracks (IGC files). Tracks render on a satellite globe with terrain.') }}
+
+        section
+          h4 {{ $t('Loading tracks') }}
+          p {{ $t('Drag and drop one or more IGC files into the side panel, or click to choose.') }}
+
+        section
+          h4 {{ $t('Coloring tracks') }}
+          p {{ $t('Use the dropdown under each loaded track to color by climb rate, altitude, energy, ground speed, time, or solid color. Hidden removes the polyline while keeping marks and analysis visible.') }}
+
+        section
+          h4 {{ $t('Settings and view') }}
+          p {{ $t('The gear icon toggles layers (shadow, altitude/time marks, waypoints) and analysis overlays (thermals, glides, dives). The crosshair button frames all loaded tracks; double-click the altitude chart to frame the current hover positions.') }}
+
+        section
+          h4 {{ $t('Mouse controls') }}
+          p {{ $t('Left-drag pans the view. Right-drag or scroll wheel zooms. Middle-drag (or Ctrl + left-drag) tilts and rotates the camera.') }}
+
+        section
+          h4 {{ $t('Hover and altitude chart') }}
+          p {{ $t('Hover the altitude chart to see each pilot\'s position on the globe. The hover persists when the cursor leaves the chart.') }}
+
+        section
+          h4 {{ $t('Sharing') }}
+          p {{ $t('Create shareable link uploads the loaded tracks to deduplicated storage and produces a URL that opens the same set of tracks for anyone with the link.') }}
       .about-author Joseph Coffland
       .modal-actions
         button(@click='aboutOpen = false') {{ $t('Close') }}
@@ -483,14 +507,39 @@ export default {
             cursor pointer
 
     .about-modal
-      max-width 480px
+      max-width 520px
+      max-height 80vh
+
+      .about-header
+        display flex
+        align-items center
+        gap 12px
+
+        .about-icon
+          font-size 32px
+          line-height 1
+          flex-shrink 0
 
       .about-body
         font-size 13px
         color #ccc
         display flex
         flex-direction column
-        gap 8px
+        gap 10px
+        overflow-y auto
+
+        section
+          display flex
+          flex-direction column
+          gap 2px
+
+        h4
+          margin 0
+          font-size 12px
+          font-weight 600
+          color #ddd
+          text-transform uppercase
+          letter-spacing 0.4px
 
         p
           margin 0
