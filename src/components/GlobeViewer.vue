@@ -145,13 +145,26 @@ export default {
       const spheres = layers.map(l => l.boundingSphere())
       const union = spheres.reduce(
         (acc, s) => Cesium.BoundingSphere.union(acc, s), spheres[0])
-      this.viewer.camera.flyToBoundingSphere(union, {
+      this.flyToSphere(union)
+    },
+
+    flyToSphere(sphere) {
+      this.viewer.camera.flyToBoundingSphere(sphere, {
         duration: 1.0,
-        offset:   new Cesium.HeadingPitchRange(0, -Cesium.Math.PI_OVER_FOUR, union.radius * 1.75),
+        offset:   new Cesium.HeadingPitchRange(0, -Cesium.Math.PI_OVER_FOUR, sphere.radius * 1.75),
       })
     },
 
     flyToAll() {this.flyToLayers([...this.layers.values()])},
+
+    flyToHover() {
+      if (!this.hoverEntities.length) return
+      const positions = this.hoverEntities.map(e => e.position.getValue())
+      const sphere = Cesium.BoundingSphere.fromPoints(positions)
+      // Single point → fromPoints gives radius 0; use a sensible minimum.
+      if (sphere.radius < 100) sphere.radius = 100
+      this.flyToSphere(sphere)
+    },
 
     syncHover() {
       for (const e of this.hoverEntities) this.viewer.entities.remove(e)

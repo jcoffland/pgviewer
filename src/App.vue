@@ -129,6 +129,10 @@ export default {
       this.$refs.globe?.flyToAll()
     },
 
+    zoomToHover() {
+      this.$refs.globe?.flyToHover()
+    },
+
     pickLang(code) {
       setLang(code)
       this.langOpen = false
@@ -254,8 +258,10 @@ export default {
   altitude-chart.chart(
     :flights='flights',
     :collapsed='collapsedChart',
+    :hover-time='hoverTime',
     @update:collapsed='collapsedChart = $event',
-    @hover='hoverTime = $event')
+    @hover='hoverTime = $event',
+    @zoom-to-fit='zoomToHover')
 
   .modal-overlay(v-if='settingsOpen', @click.self='settingsOpen = false')
     .modal.settings-modal

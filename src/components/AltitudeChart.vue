@@ -8,9 +8,10 @@ export default {
   props: {
     flights:   {type: Array, required: true},
     collapsed: Boolean,
+    hoverTime: {type: Number, default: null},
   },
 
-  emits: ['hover', 'update:collapsed'],
+  emits: ['hover', 'update:collapsed', 'zoom-to-fit'],
 
   data() {
     return {plot: null, ro: null}
@@ -18,6 +19,14 @@ export default {
 
   computed: {
     lang() {return currentLang.value},
+    hoverX() {
+      if (this.hoverTime == null || !this.plot) return null
+      const x = this.plot.valToPos(this.hoverTime, 'x')
+      if (x < 0 || x > this.plot.bbox.width / devicePixelRatio) return null
+      const overRect = this.plot.over.getBoundingClientRect()
+      const bodyRect = this.$refs.container.parentElement.getBoundingClientRect()
+      return overRect.left - bodyRect.left + x
+    },
   },
 
   mounted() {
@@ -83,7 +92,7 @@ export default {
           setCursor: [
             u => {
               const i = u.cursor.idx
-              if (i == null) {this.$emit('hover', null); return}
+              if (i == null) return  // mouse left chart; keep last hover
               const t = u.data[0][i]
               this.$emit('hover', t)
             },
@@ -141,9 +150,10 @@ export default {
       :title='collapsed ? $t("Expand") : $t("Collapse")',
       @click='$emit("update:collapsed", !collapsed)')
       | {{ collapsed ? '▴' : '▾' }}
-  .body
+  .body(@dblclick='$emit("zoom-to-fit")')
     .empty(v-if='!flights.length') {{ $t('No flights loaded') }}
     .container(ref='container')
+    .hover-line(v-if='hoverX != null', :style='{left: hoverX + "px"}')
 </template>
 
 
@@ -212,6 +222,15 @@ export default {
   .container
     position absolute
     inset 0
+
+  .hover-line
+    position absolute
+    top 0
+    bottom 0
+    width 0
+    border-left 1px dashed #888
+    pointer-events none
+    z-index 5
 
   .empty
     position absolute
