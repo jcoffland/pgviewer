@@ -45,5 +45,5 @@ lifecycle expiration.
 
 - `HEAD /<hash>.bin` — 200 if object exists, 404 otherwise.
 - `PUT /<hash>.bin` — store body. Returns `{ok: true, existed: true|false}`.
-  Body capped at 50 MB.
+  Body capped at 2 MiB.
 - `GET /<hash>.bin` — return the stored bytes.

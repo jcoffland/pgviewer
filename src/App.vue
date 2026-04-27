@@ -10,6 +10,9 @@ import {uploadBlob, fetchById} from './share/backend.js'
 // Hash prefix for the share URL. Bumping this lets us evolve the format.
 const SHARE_HASH_PREFIX = '#v1='
 
+// Hard cap on share bundle size, matching the worker's MAX_BODY_BYTES.
+const MAX_SHARE_BYTES = 2 * 1024 * 1024
+
 
 // Per-flight color cycle.
 const FLIGHT_COLORS = [
@@ -65,7 +68,10 @@ export default {
           this.parseErrors.push({name: file.name, msg: e.message})
         }
       }
-      if (added.length) this.flights = [...this.flights, ...added]
+      if (added.length) {
+        this.flights = [...this.flights, ...added]
+        this.clearShareHash()
+      }
     },
 
     // Build a flight object from raw IGC text. `index` is the position
@@ -78,6 +84,21 @@ export default {
 
     removeFlight(id) {
       this.flights = this.flights.filter(f => f.id != id)
+      this.clearShareHash()
+    },
+
+    clearFlights() {
+      this.flights     = []
+      this.parseErrors = []
+      this.clearShareHash()
+    },
+
+    // Drop a #v1=... fragment from the URL bar without reloading. Called
+    // whenever the loaded flight set diverges from what the share link
+    // points to.
+    clearShareHash() {
+      if (location.hash.startsWith(SHARE_HASH_PREFIX))
+        history.replaceState(null, '', location.pathname + location.search)
     },
 
     setFlightColoring({id, key}) {
@@ -98,6 +119,10 @@ export default {
       this.isFullscreen = !!document.fullscreenElement
     },
 
+    snapToView() {
+      this.$refs.globe?.flyToAll()
+    },
+
     async createShareLink() {
       if (!this.flights.length) return
       this.shareDialog = {state: 'uploading'}
@@ -106,11 +131,13 @@ export default {
           name: f.track.filename,
           text: f.text,
         })))
-        const id = await uploadBlob(blob)
-        this.shareDialog = {
-          state: 'ok',
-          url:   location.origin + location.pathname + SHARE_HASH_PREFIX + id,
-        }
+        if (MAX_SHARE_BYTES < blob.size) throw new Error(
+          'shared bundle too large (' + (blob.size / 1024 / 1024).toFixed(1)
+          + ' MiB; limit ' + (MAX_SHARE_BYTES / 1024 / 1024) + ' MiB)')
+        const id  = await uploadBlob(blob)
+        const url = location.origin + location.pathname + SHARE_HASH_PREFIX + id
+        history.replaceState(null, '', url)
+        this.shareDialog = {state: 'ok', url}
       } catch (e) {
         this.shareDialog = {state: 'error', msg: e.message}
       }
@@ -182,10 +209,12 @@ export default {
       @update:coloring='setFlightColoring',
       @update:collapsed='collapsedSide = $event',
       @share='createShareLink',
+      @clear='clearFlights',
       @remove='removeFlight')
 
     .viewer-area
       globe-viewer.viewer(
+        ref='globe',
         :flights='flights',
         :show-shadow='showShadow',
         :show-altitude-marks='showAltitudeMarks',
@@ -195,10 +224,16 @@ export default {
         :show-glides='showGlides',
         :show-dives='showDives',
         :hover-time='hoverTime')
-      button.fullscreen-toggle.icon(
-        :title='isFullscreen ? "Exit fullscreen" : "Fullscreen"',
-        @click='toggleFullscreen')
-        | {{ isFullscreen ? '⇲' : '⛶' }}
+      .viewer-buttons
+        button.icon(
+          :title='isFullscreen ? "Exit fullscreen" : "Fullscreen"',
+          @click='toggleFullscreen')
+          | {{ isFullscreen ? '⇲' : '⛶' }}
+        button.icon(
+          :disabled='!flights.length',
+          title='Snap to view',
+          @click='snapToView')
+          | ⌖
 
   altitude-chart.chart(
     :flights='flights',
@@ -247,23 +282,32 @@ export default {
         position absolute
         inset 0
 
-      .fullscreen-toggle
+      .viewer-buttons
         position absolute
         top 8px
         right 8px
         z-index 10
-        background rgba(0, 0, 0, 0.6)
-        border 1px solid #555
-        color #eee
-        font-size 16px
-        line-height 1
-        padding 4px 8px
-        cursor pointer
-        border-radius 3px
+        display flex
+        flex-direction column
+        gap 6px
 
-        &:hover
-          background rgba(40, 40, 40, 0.85)
-          border-color #888
+        button
+          background rgba(0, 0, 0, 0.6)
+          border 1px solid #555
+          color #eee
+          font-size 16px
+          line-height 1
+          padding 4px 8px
+          cursor pointer
+          border-radius 3px
+
+          &:hover:not(:disabled)
+            background rgba(40, 40, 40, 0.85)
+            border-color #888
+
+          &:disabled
+            opacity 0.4
+            cursor not-allowed
 
   .modal-overlay
     position fixed

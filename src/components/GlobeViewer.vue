@@ -56,6 +56,7 @@ export default {
     this.viewer.scene.globe.tileCacheSize           = 10000
     this.viewer.scene.globe.preloadAncestors        = true
     this.viewer.scene.globe.preloadSiblings         = true
+    this.viewer.cesiumWidget.creditContainer.style.display = 'none'
     this.syncFlights()
   },
 
@@ -145,6 +146,8 @@ export default {
         (acc, s) => Cesium.BoundingSphere.union(acc, s), spheres[0])
       this.viewer.camera.flyToBoundingSphere(union, {duration: 1.0})
     },
+
+    flyToAll() {this.flyToLayers([...this.layers.values()])},
 
     syncHover() {
       if (this.hoverEntity) {

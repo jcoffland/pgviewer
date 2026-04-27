@@ -41,6 +41,7 @@ export default {
     'remove',
     'files',
     'share',
+    'clear',
   ],
 
   data() {
@@ -138,6 +139,7 @@ export default {
             @change='$emit("update:coloring", {id: f.id, key: $event.target.value})')
             option(v-for='c in coloringsFor(f)', :key='c.key', :value='c.key')
               | {{ c.label }}
+        button.clear-btn(@click='$emit("clear")') Clear all
 </template>
 
 
@@ -191,7 +193,8 @@ export default {
     .error
       margin-top 2px
 
-  .share-btn
+  .share-btn,
+  .clear-btn
     margin-top 8px
     width 100%
     padding 6px 10px

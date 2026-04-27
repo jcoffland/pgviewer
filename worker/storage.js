@@ -10,7 +10,7 @@
 //   ALLOWED_ORIGINS    comma-separated list of origins, e.g.
 //                      "https://pg.example.com,http://localhost:5173"
 
-const MAX_BODY_BYTES = 50 * 1024 * 1024  // 50 MB
+const MAX_BODY_BYTES = 2 * 1024 * 1024  // 2 MiB
 const KEY_RE         = /^\/([a-f0-9]{64})\.bin$/
 
 
