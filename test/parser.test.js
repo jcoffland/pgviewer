@@ -40,9 +40,10 @@ describe('parseIgc on synthetic minimal file', () => {
 
   it('produces altitude from pressure shifted by GPS offset', () => {
     const t = parseIgc(igc, 'synth.igc')
-    // press[0] = 587, gps[0] = 558. Median (gps - press) over 8 records
-    // is -30, so altitude = 587 + (-30) = 557.
-    expect(t.coords[0].ele).toBe(557)
+    // press[0] = 587, gps[0] = 558, diff = -29. Kalman-tracked offset
+    // starts near the median diff (-30) and converges toward the local
+    // observation. Result is close to 558 (gps) but anchored to pressure.
+    expect(Math.abs(t.coords[0].ele - 558) < 2).toBe(true)
   })
 
   it('falls back to GPS when pressure is missing', () => {

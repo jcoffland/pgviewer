@@ -120,14 +120,46 @@ const parseH = (line, state) => {
 }
 
 
-// Build a smooth altitude series from pressure altitude shifted to match
-// the GPS altitude in absolute reference. The shift is the median of
-// (gps - pressure), which is robust against GPS spikes.
+// Build a smooth altitude series from pressure altitude shifted to track
+// the GPS altitude in absolute reference. The offset b(t) is allowed to
+// drift slowly (atmospheric pressure changes during the flight) but is
+// stiff enough to reject GPS spikes. A scalar Kalman filter on the offset:
+//
+//   process: b_{k+1} = b_k + w,    var(w) per second = OFFSET_DRIFT_VAR
+//   measure: z_k = gps_k - press_k = b_k + v,  var(v) = GPS_ELE_VAR
+//
+// Median-initialized so the warm-up state isn't fooled by an early run of
+// bad GPS data.
+const OFFSET_DRIFT_VAR = 0.0025  // m^2/s; ~0.05 m/s drift sigma
+const GPS_ELE_VAR      = 100     // m^2; ~10 m sigma
+const OFFSET_INIT_VAR  = 25      // m^2; 5m sigma after median init
+const OFFSET_GATE      = 16      // 4 sigma
+
 const pressureWithOffset = bRecords => {
+  // Median seed for warm start.
   const diffs = []
   for (const b of bRecords)
     if (b.alt != 0 && b.ele != 0) diffs.push(b.ele - b.alt)
+  if (!diffs.length) return bRecords.map(b => b.alt)
   diffs.sort((a, b) => a - b)
-  const offset = diffs.length ? diffs[diffs.length >> 1] : 0
-  return bRecords.map(b => b.alt + offset)
+  const seed = diffs[diffs.length >> 1]
+
+  let offset = seed
+  let P      = OFFSET_INIT_VAR
+  let prevDt = null
+  return bRecords.map(b => {
+    if (b.ele != 0) {
+      const dt = prevDt ? (b.dt - prevDt) / 1000 : 0
+      P += OFFSET_DRIFT_VAR * dt
+      const innov = b.ele - b.alt - offset
+      const S = P + GPS_ELE_VAR
+      if (innov * innov / S < OFFSET_GATE) {
+        const K = P / S
+        offset += K * innov
+        P      -= K * P
+      }
+      prevDt = b.dt
+    }
+    return b.alt + offset
+  })
 }
