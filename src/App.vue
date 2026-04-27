@@ -258,7 +258,7 @@ export default {
         button.icon(
           :title='$t("About")',
           @click='aboutOpen = !aboutOpen')
-          | ⓘ
+          | ℹ
 
   altitude-chart.chart(
     :flights='flights',
@@ -395,6 +395,11 @@ export default {
         gap 6px
 
         button
+          display flex
+          align-items center
+          justify-content center
+          min-width 30px
+          min-height 26px
           background rgba(0, 0, 0, 0.6)
           border 1px solid #555
           color #eee

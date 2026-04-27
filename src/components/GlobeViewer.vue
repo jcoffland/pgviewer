@@ -259,6 +259,8 @@ export default {
           point: {
             pixelSize:    10,
             color:        Cesium.Color.fromCssColorString(f.color),
+            outlineColor: Cesium.Color.WHITE,
+            outlineWidth: 1,
           },
         }))
       }
