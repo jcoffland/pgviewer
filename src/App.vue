@@ -86,7 +86,7 @@ export default {
       const track = parseIgc(text, name)
       const color = FLIGHT_COLORS[index % FLIGHT_COLORS.length]
       const coloringKey = index == 0 ? 'climb' : 'solid_color'
-      return {id, track, color, coloringKey, text}
+      return {id, track, color, coloringKey, text, terrainHeights: null}
     },
 
     removeFlight(id) {
@@ -132,6 +132,11 @@ export default {
 
     zoomToHover() {
       this.$refs.globe?.flyToHover()
+    },
+
+    onTerrainReady({id, heights}) {
+      this.flights = this.flights.map(
+        f => f.id == id ? {...f, terrainHeights: heights} : f)
     },
 
     pickLang(code) {
@@ -230,7 +235,8 @@ export default {
         :show-glides='showGlides',
         :show-dives='showDives',
         :hover-time='hoverTime',
-        :show-empty='!loadingShare')
+        :show-empty='!loadingShare',
+        @terrain-ready='onTerrainReady')
       .viewer-buttons
         .lang-selector
           button.icon(:title='"Language"', @click='langOpen = !langOpen')

@@ -59,8 +59,18 @@ export default {
       if (this.plot) {this.plot.destroy(); this.plot = null}
       if (this.collapsed || !this.flights.length) return
 
+      const first        = this.flights[0]
+      const hasTerrain   = first && first.terrainHeights
       const series = [
         {label: 'time'},
+        ...(hasTerrain ? [{
+          label:    'terrain',
+          stroke:   'rgba(160,160,160,0.6)',
+          fill:     'rgba(160,160,160,0.35)',
+          width:    1,
+          spanGaps: true,
+          points:   {show: false},
+        }] : []),
         ...this.flights.map(f => ({
           label:    f.track.filename,
           stroke:   f.color,
@@ -112,7 +122,7 @@ export default {
         for (const t of f.track.t) allT.add(t)
       const xs = [...allT].sort((a, b) => a - b)
 
-      const series = this.flights.map(f => {
+      const flightSeries = this.flights.map(f => {
         const ys     = new Array(xs.length).fill(null)
         const tMap   = new Map()
         for (let i = 0; i < f.track.t.length; i++)
@@ -124,7 +134,21 @@ export default {
         return ys
       })
 
-      return [xs, ...series]
+      const first = this.flights[0]
+      const terrainSeries = []
+      if (first && first.terrainHeights) {
+        const ys   = new Array(xs.length).fill(null)
+        const tMap = new Map()
+        for (let i = 0; i < first.track.t.length; i++)
+          tMap.set(first.track.t[i], first.terrainHeights[i])
+        for (let i = 0; i < xs.length; i++) {
+          const v = tMap.get(xs[i])
+          if (v != null) ys[i] = v
+        }
+        terrainSeries.push(ys)
+      }
+
+      return [xs, ...terrainSeries, ...flightSeries]
     },
 
     layout() {

@@ -15,12 +15,10 @@ import {
 
 
 const TRACK_WIDTH       = 2
-const SHADOW_WIDTH      = 1
 const ANALYSIS_WIDTH    = 3
 const TASK_WIDTH        = 1
 const N_BUCKETS         = 32
 
-const SHADOW_COLOR      = Cesium.Color.fromCssColorString('#000000')
 const SHADOW_FILL       = Cesium.Color.fromCssColorString('#000000').withAlpha(0.3)
 const TIME_MARK_COLOR   = Cesium.Color.fromCssColorString('#33ffff')
 const THERMAL_COLOR     = Cesium.Color.fromCssColorString('#ff3333')
@@ -134,22 +132,6 @@ const buildTrackCollection = (flight, key, scale) => {
       runStart = i
     }
   }
-  return coll
-}
-
-
-// Shadow ground line as a single PolylineCollection (clamped to ground).
-const buildShadowGround = flight => {
-  const coll = new Cesium.PolylineCollection()
-  const coords = flight.track.coords
-  if (coords.length < 2) return coll
-  // Shadow line clamps to ground; wall is a separate Entity (below).
-  coll.add({
-    positions: Cesium.Cartesian3.fromDegreesArray(
-      coords.flatMap(c => [c.lonDeg, c.latDeg])),
-    width:    SHADOW_WIDTH,
-    material: Cesium.Material.fromType('Color', {color: SHADOW_COLOR}),
-  })
   return coll
 }
 
@@ -370,17 +352,19 @@ const buildTask = flight => {
 }
 
 
-// Shadow wall: one entity holding the vertical wall geometry.
+// Shadow wall: one entity holding the vertical wall geometry. When the
+// flight has terrainHeights sampled, the wall's bottom follows the
+// terrain. Without it, Cesium clamps to the ellipsoid surface.
 const buildShadowWall = flight => {
   const coords = flight.track.coords
   if (coords.length < 2) return []
-  return [new Cesium.Entity({
-    wall: {
-      positions: cartesians(coords),
-      material:  SHADOW_FILL,
-      outline:   false,
-    },
-  })]
+  const wall = {
+    positions: cartesians(coords),
+    material:  SHADOW_FILL,
+    outline:   false,
+  }
+  if (flight.terrainHeights) wall.minimumHeights = flight.terrainHeights
+  return [new Cesium.Entity({wall})]
 }
 
 
@@ -399,7 +383,6 @@ export class FlightLayer {
     this.trackColl  = coloringKey == 'hidden'
       ? new Cesium.PolylineCollection()
       : buildTrackCollection(flight, coloringKey, scales[coloringKey])
-    this.shadowColl = buildShadowGround(flight)
 
     // Entity groups (added to viewer.entities).
     this.entityGroups = {
@@ -419,7 +402,6 @@ export class FlightLayer {
   attach(viewer) {
     if (this.attached) return
     viewer.scene.primitives.add(this.trackColl)
-    viewer.scene.primitives.add(this.shadowColl)
     for (const ents of Object.values(this.entityGroups))
       for (const e of ents) viewer.entities.add(e)
     this.attached = true
@@ -429,7 +411,6 @@ export class FlightLayer {
   detach(viewer) {
     if (!this.attached) return
     viewer.scene.primitives.remove(this.trackColl)
-    viewer.scene.primitives.remove(this.shadowColl)
     for (const ents of Object.values(this.entityGroups))
       for (const e of ents) viewer.entities.remove(e)
     this.attached = false
@@ -448,8 +429,18 @@ export class FlightLayer {
   }
 
 
+  // Rebuild the shadow wall after terrain heights arrive (so the bottom
+  // of the wall follows ground rather than the ellipsoid).
+  rebuildShadowWall(viewer) {
+    const old = this.entityGroups.shadowWall
+    if (this.attached) for (const e of old) viewer.entities.remove(e)
+    this.entityGroups.shadowWall = buildShadowWall(this.flight)
+    for (const e of this.entityGroups.shadowWall) e.show = old.length ? old[0].show : false
+    if (this.attached) for (const e of this.entityGroups.shadowWall) viewer.entities.add(e)
+  }
+
+
   setShadowVisible(v) {
-    this.shadowColl.show = v
     for (const e of this.entityGroups.shadowWall) e.show = v
   }
 

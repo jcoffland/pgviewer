@@ -34,20 +34,29 @@ export default {
     showEmpty:         {type: Boolean, default: true},
   },
 
+  emits: ['terrain-ready'],
+
   data() {
     return {
-      viewer:      null,
-      layers:      new Map(),  // flight id → FlightLayer
+      viewer:        null,
+      layers:        new Map(),  // flight id → FlightLayer
       hoverEntities: [],
+      terrainSeen:   new Set(),  // flight ids we've already sampled
     }
   },
 
   mounted() {
+    const terrain = Cesium.Terrain.fromWorldTerrain()
+    this.terrainReady = new Promise((resolve, reject) => {
+      terrain.readyEvent.addEventListener(provider => resolve(provider))
+      terrain.errorEvent.addEventListener(err => reject(err))
+    })
+
     this.viewer = new Cesium.Viewer(this.$refs.container, {
       baseLayer: Cesium.ImageryLayer.fromWorldImagery({
         maximumAnisotropy: Number.POSITIVE_INFINITY,  // GPU max
       }),
-      terrain:              Cesium.Terrain.fromWorldTerrain(),
+      terrain,
       baseLayerPicker:      false,
       geocoder:             false,
       homeButton:           false,
@@ -130,12 +139,60 @@ export default {
           layer.scales = scales
           if (rebuildAll || layer.coloringKey != f.coloringKey)
             layer.rebuildTrack(this.viewer, f.coloringKey)
+          if (layer.flight.terrainHeights != f.terrainHeights) {
+            layer.flight = f
+            layer.rebuildShadowWall(this.viewer)
+          }
         }
       }
 
       this.syncVisibility()
       this.syncHover()
       if (added.length) this.flyToLayers(added)
+
+      for (const f of this.flights)
+        if (!this.terrainSeen.has(f.id)) {
+          this.terrainSeen.add(f.id)
+          this.sampleTerrainForFlight(f)
+        }
+    },
+
+    // Sample terrain at ~500 evenly-spaced indices and linearly interpolate
+    // to fill all coord indices. Emits terrain-ready when done so the
+    // viewer chart can pick up the new heights.
+    async sampleTerrainForFlight(flight) {
+      const coords = flight.track.coords
+      if (coords.length < 2) return
+      const N = Math.min(500, coords.length)
+      const sampleIdx = []
+      const carto     = []
+      for (let k = 0; k < N; k++) {
+        const i = Math.round(k * (coords.length - 1) / (N - 1))
+        sampleIdx.push(i)
+        carto.push(Cesium.Cartographic.fromDegrees(coords[i].lonDeg, coords[i].latDeg))
+      }
+      let provider
+      try {
+        provider = await this.terrainReady
+        await Cesium.sampleTerrainMostDetailed(provider, carto)
+      } catch (e) {
+        console.warn('terrain sampling failed:', e)
+        return
+      }
+      // Linear interpolation between sampled points to fill every index.
+      const heights = new Array(coords.length)
+      for (let k = 0; k < N - 1; k++) {
+        const i0 = sampleIdx[k]
+        const i1 = sampleIdx[k + 1]
+        const h0 = carto[k].height
+        const h1 = carto[k + 1].height
+        for (let i = i0; i < i1; i++) {
+          const t = (i - i0) / (i1 - i0 || 1)
+          heights[i] = h0 + (h1 - h0) * t
+        }
+      }
+      heights[coords.length - 1] = carto[N - 1].height
+      this.$emit('terrain-ready', {id: flight.id, heights})
     },
 
     syncVisibility() {
