@@ -440,6 +440,11 @@ export class FlightLayer {
   }
 
 
+  setTrackVisible(v) {
+    this.trackColl.show = v
+  }
+
+
   setShadowVisible(v) {
     for (const e of this.entityGroups.shadowWall) e.show = v
   }

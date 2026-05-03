@@ -6,9 +6,10 @@ import {currentLang} from '../i18n/index.js'
 
 export default {
   props: {
-    flights:   {type: Array, required: true},
-    collapsed: Boolean,
-    hoverTime: {type: Number, default: null},
+    flights:    {type: Array, required: true},
+    selectedId: {default: null},
+    collapsed:  Boolean,
+    hoverTime:  {type: Number, default: null},
   },
 
   emits: ['hover', 'update:collapsed', 'zoom-to-fit'],
@@ -19,6 +20,11 @@ export default {
 
   computed: {
     lang() {return currentLang.value},
+    displayFlights() {
+      if (this.selectedId == null) return this.flights
+      const sel = this.flights.find(f => f.id == this.selectedId)
+      return sel ? [sel] : this.flights
+    },
     hoverX() {
       if (this.hoverTime == null || !this.plot) return null
       const x = this.plot.valToPos(this.hoverTime, 'x')
@@ -41,8 +47,9 @@ export default {
   },
 
   watch: {
-    flights:   'build',
-    lang:      'build',
+    flights:    'build',
+    selectedId: 'build',
+    lang:       'build',
     collapsed(v) {if (!v) this.$nextTick(() => this.build())},
   },
 
@@ -59,8 +66,10 @@ export default {
       if (this.plot) {this.plot.destroy(); this.plot = null}
       if (this.collapsed || !this.flights.length) return
 
-      const first        = this.flights[0]
-      const hasTerrain   = first && first.terrainHeights
+      const flights      = this.displayFlights
+      const isSelected   = this.selectedId != null
+      const first        = flights[0]
+      const hasTerrain   = isSelected && first && first.terrainHeights
       const series = [
         {label: 'time'},
         ...(hasTerrain ? [{
@@ -71,7 +80,7 @@ export default {
           spanGaps: true,
           points:   {show: false},
         }] : []),
-        ...this.flights.map(f => ({
+        ...flights.map(f => ({
           label:    f.track.filename,
           stroke:   f.color,
           width:    1.5,
@@ -117,12 +126,13 @@ export default {
     // Easy version: union of all flights' t arrays, then for each flight,
     // a series with values at its own t and nulls elsewhere.
     buildData() {
+      const flights = this.displayFlights
       const allT = new Set()
-      for (const f of this.flights)
+      for (const f of flights)
         for (const t of f.track.t) allT.add(t)
       const xs = [...allT].sort((a, b) => a - b)
 
-      const flightSeries = this.flights.map(f => {
+      const flightSeries = flights.map(f => {
         const ys     = new Array(xs.length).fill(null)
         const tMap   = new Map()
         for (let i = 0; i < f.track.t.length; i++)
@@ -134,9 +144,10 @@ export default {
         return ys
       })
 
-      const first = this.flights[0]
+      const isSelected = this.selectedId != null
+      const first = flights[0]
       const terrainSeries = []
-      if (first && first.terrainHeights) {
+      if (isSelected && first && first.terrainHeights) {
         const ys   = new Array(xs.length).fill(null)
         const tMap = new Map()
         for (let i = 0; i < first.track.t.length; i++)
@@ -166,8 +177,8 @@ export default {
 .altitude-chart(:class='{collapsed}')
   .header
     .label {{ $t('Altitude') }}
-    .legend(v-if='flights.length')
-      .legend-item(v-for='f in flights', :key='f.id')
+    .legend(v-if='displayFlights.length')
+      .legend-item(v-for='f in displayFlights', :key='f.id')
         .dash(:style='{background: f.color}')
         .legend-text {{ legendFor(f) }}
     button.icon(

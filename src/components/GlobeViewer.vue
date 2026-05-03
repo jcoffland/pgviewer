@@ -23,6 +23,8 @@ const TOGGLE_MAP = {
 export default {
   props: {
     flights:           {type: Array, required: true},
+    selectedId:        {default: null},
+    primaryColoring:   {type: String, default: 'climb'},
     showShadow:        Boolean,
     showAltitudeMarks: Boolean,
     showTimeMarks:     Boolean,
@@ -82,6 +84,8 @@ export default {
 
   watch: {
     flights:           {handler: 'syncFlights', deep: false},
+    selectedId:        'syncFlights',
+    primaryColoring:   'syncFlights',
     showShadow:        'syncVisibility',
     showAltitudeMarks: 'syncVisibility',
     showTimeMarks:     'syncVisibility',
@@ -93,6 +97,12 @@ export default {
   },
 
   methods: {
+    // Coloring mode for a flight: the user-chosen primary mode if it's
+    // the selected flight, otherwise plain solid color.
+    coloringFor(f) {
+      return f.id == this.selectedId ? this.primaryColoring : 'solid_color'
+    },
+
     // The flights array changed. Three kinds of change:
     //   - flight added       → build new layer with current aggregate scales
     //   - flight removed     → detach old layer; rebuild remaining tracks
@@ -129,16 +139,17 @@ export default {
         f => !this.layers.has(f.id))
 
       for (const f of this.flights) {
+        const wantKey = this.coloringFor(f)
         let layer = this.layers.get(f.id)
         if (!layer) {
-          layer = new FlightLayer(f, scales, f.coloringKey)
+          layer = new FlightLayer(f, scales, wantKey)
           this.layers.set(f.id, layer)
           layer.attach(this.viewer)
           added.push(layer)
         } else {
           layer.scales = scales
-          if (rebuildAll || layer.coloringKey != f.coloringKey)
-            layer.rebuildTrack(this.viewer, f.coloringKey)
+          if (rebuildAll || layer.coloringKey != wantKey)
+            layer.rebuildTrack(this.viewer, wantKey)
           if (layer.flight.terrainHeights != f.terrainHeights) {
             layer.flight = f
             layer.rebuildShadowWall(this.viewer)
@@ -196,10 +207,14 @@ export default {
     },
 
     syncVisibility() {
-      for (const layer of this.layers.values()) {
-        layer.setShadowVisible(this.showShadow)
+      for (const f of this.flights) {
+        const layer = this.layers.get(f.id)
+        if (!layer) continue
+        const isSelected = f.id == this.selectedId
+        layer.setTrackVisible(!f.hidden)
+        layer.setShadowVisible(isSelected && this.showShadow)
         for (const [flag, group] of Object.entries(TOGGLE_MAP))
-          layer.setEntityGroupVisible(group, this[flag])
+          layer.setEntityGroupVisible(group, isSelected && this[flag])
       }
     },
 

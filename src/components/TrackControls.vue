@@ -2,55 +2,63 @@
 import FileDropzone from './FileDropzone.vue'
 
 
-const COLORINGS = [
-  {key: 'climb',       label: 'Climb',        needsEle: true,
-   help: 'Color by climb rate: red is strong climb, blue is sink.'},
-  {key: 'altitude',    label: 'Altitude',     needsEle: true,
-   help: 'Color by altitude above sea level.'},
-  {key: 'tec',         label: 'Energy',       needsEle: true,
-   help: 'Color by total energy compensated climb (climb + speed change).'},
-  {key: 'speed',       label: 'Ground speed',
-   help: 'Color by ground speed.'},
-  {key: 'time',        label: 'Time',
-   help: 'Color by time, from start of track to end.'},
-  {key: 'solid_color', label: 'Solid color',
-   help: 'Single color for the whole track.'},
-  {key: 'hidden',      label: 'Hidden',
-   help: 'Hide the track polyline (other layers like marks and analysis stay visible).'},
-]
-
-
 export default {
   components: {FileDropzone},
 
   props: {
     flights:           {type: Array, required: true},
+    selectedId:        {default: null},
     collapsed:         Boolean,
     parseErrors:       {type: Array, default: () => []},
   },
 
   emits: [
-    'update:coloring',
     'update:collapsed',
+    'select',
     'remove',
+    'toggle-hidden',
     'files',
     'share',
     'clear',
   ],
 
-  data() {
-    return {colorings: COLORINGS}
+  computed: {
+    selected() {return this.flights.find(f => f.id == this.selectedId) || null},
   },
 
   methods: {
-    coloringsFor(flight) {
-      if (flight.track.elevationData) return this.colorings
-      return this.colorings.filter(c => !c.needsEle)
+    legendFor(f) {
+      const t = f.track
+      const parts = []
+      if (t.pilotName)  parts.push(t.pilotName)
+      if (t.gliderType) parts.push(t.gliderType)
+      return parts.length ? parts.join(' · ') : t.filename
     },
 
-    helpFor(key) {
-      const c = this.colorings.find(c => c.key == key)
-      return c ? c.help : ''
+    distanceKm(f) {
+      const s = f.track.s
+      return s.length ? (s[s.length - 1] / 1000).toFixed(1) : '0.0'
+    },
+
+    durationStr(f) {
+      const t = f.track.t
+      if (t.length < 2) return ''
+      const secs = t[t.length - 1] - t[0]
+      const h = Math.floor(secs / 3600)
+      const m = Math.floor((secs % 3600) / 60)
+      return h ? `${h}h ${m}m` : `${m}m`
+    },
+
+    timeStr(unix) {
+      // IGC times are UTC. Display HH:MM in UTC to match the source.
+      const d = new Date(unix * 1000)
+      const hh = String(d.getUTCHours()).padStart(2, '0')
+      const mm = String(d.getUTCMinutes()).padStart(2, '0')
+      return `${hh}:${mm}`
+    },
+
+    onRowClick(id) {
+      this.$emit('select', id == this.selectedId ? null : id)
     },
   },
 }
@@ -70,6 +78,7 @@ export default {
       section
         file-dropzone(@files='$emit("files", $event)')
         button.share-btn(:disabled='!flights.length', @click='$emit("share")')
+          span.btn-icon 🔗︎
           | {{ $t('Create shareable link') }}
         .errors(v-if='parseErrors.length')
           .error(v-for='e in parseErrors', :key='e.name')
@@ -77,22 +86,54 @@ export default {
 
       section(v-if='flights.length')
         h3 {{ $t('Tracks') }}
-        .flight(v-for='f in flights', :key='f.id')
-          .row
+
+        .detail(v-if='selected')
+          .detail-head
+            .swatch(:style='{background: selected.color}')
+            .detail-title {{ selected.track.pilotName || selected.track.filename }}
+          .detail-row
+            span.k {{ $t('Glider') }}
+            span.v {{ selected.track.gliderType || '<unknown>' }}
+          .detail-row
+            span.k {{ $t('File') }}
+            span.v {{ selected.track.filename || '<unknown>' }}
+          .detail-row
+            span.k {{ $t('Distance') }}
+            span.v {{ distanceKm(selected) }} km
+          .detail-row
+            span.k {{ $t('Duration') }}
+            span.v {{ durationStr(selected) || '<unknown>' }}
+          .detail-row
+            span.k {{ $t('Start') }}
+            span.v {{ selected.track.t.length ? timeStr(selected.track.t[0]) + ' UTC' : '<unknown>' }}
+          .detail-row
+            span.k {{ $t('End') }}
+            span.v {{ selected.track.t.length ? timeStr(selected.track.t[selected.track.t.length - 1]) + ' UTC' : '<unknown>' }}
+
+        .detail.empty(v-else)
+          | {{ $t('No track selected') }}
+
+        .track-list
+          .track-row(
+            v-for='f in flights',
+            :key='f.id',
+            :class='{selected: f.id == selectedId, dim: f.hidden}',
+            @click='onRowClick(f.id)')
             .swatch(:style='{background: f.color}')
-            .name {{ f.track.filename }}
-            button(@click='$emit("remove", f.id)') ×
-          select(
-            :value='f.coloringKey',
-            :title='$t(helpFor(f.coloringKey))',
-            @change='$emit("update:coloring", {id: f.id, key: $event.target.value})')
-            option(
-              v-for='c in coloringsFor(f)',
-              :key='c.key',
-              :value='c.key',
-              :title='$t(c.help)')
-              | {{ $t(c.label) }}
-        button.clear-btn(@click='$emit("clear")') {{ $t('Clear all') }}
+            .name {{ legendFor(f) }}
+            button.icon.row-btn(
+              :title='f.hidden ? $t("Show track") : $t("Hide track")',
+              :class='{dim: f.hidden}',
+              @click.stop='$emit("toggle-hidden", f.id)')
+              | 👁
+            button.icon.row-btn(
+              :title='$t("Remove track")',
+              @click.stop='$emit("remove", f.id)')
+              | ✕
+
+        button.clear-btn(@click='$emit("clear")')
+          span.btn-icon 🗑
+          | {{ $t('Clear all') }}
 </template>
 
 
@@ -153,6 +194,9 @@ export default {
     padding 6px 10px
     font-size 12px
 
+    .btn-icon
+      margin-right 6px
+
     &:disabled
       opacity 0.4
       cursor not-allowed
@@ -194,45 +238,98 @@ export default {
     input
       cursor pointer
 
-  .flight
-    display flex
-    flex-direction column
-    gap 4px
-    padding 6px 0
-    border-bottom 1px solid #2a2a2a
+  .swatch
+    width 14px
+    height 14px
+    border-radius 2px
+    flex-shrink 0
+
+  .name
+    flex 1
+    overflow hidden
+    text-overflow ellipsis
+    white-space nowrap
+
+  .detail
+    background #1f1f1f
+    border 1px solid #333
+    border-radius 4px
+    padding 8px
+    margin-bottom 8px
     font-size 12px
+    min-height 152px
+    box-sizing border-box
 
-    &:last-child
-      border-bottom none
+    &.empty
+      color #666
+      font-style italic
+      display flex
+      align-items center
+      justify-content center
 
-    .row
+    .detail-head
       display flex
       align-items center
       gap 6px
+      margin-bottom 6px
 
-    .swatch
-      width 14px
-      height 14px
-      border-radius 2px
-      flex-shrink 0
+      .detail-title
+        flex 1
+        font-weight 600
+        font-size 13px
+        overflow hidden
+        text-overflow ellipsis
+        white-space nowrap
 
-    .name
-      flex 1
-      overflow hidden
-      text-overflow ellipsis
-      white-space nowrap
+    .detail-row
+      display flex
+      gap 6px
+      line-height 1.5
 
-    button
-      padding 0 6px
-      font-size 14px
-      line-height 1
+      .k
+        color #888
+        min-width 60px
 
-    select
-      width 100%
-      padding 2px 4px
+      .v
+        flex 1
+        overflow hidden
+        text-overflow ellipsis
+        white-space nowrap
+
+  .track-list
+    display flex
+    flex-direction column
+
+  .track-row
+    display flex
+    align-items center
+    gap 6px
+    padding 4px 6px
+    cursor pointer
+    border-radius 3px
+    font-size 12px
+
+    &:hover
       background #2a2a2a
-      color #eee
-      border 1px solid #444
-      border-radius 3px
-      font-size 12px
+
+    &.selected
+      background #2d3a55
+
+    &.dim .name
+      color #777
+      font-style italic
+
+    .row-btn
+      padding 0
+      margin 0
+      font-size 11px
+      line-height 1
+      flex-shrink 0
+      min-width 14px
+
+      &.dim
+        opacity 0.35
+
+    .row-btn + .row-btn
+      margin-left -2px
 </style>

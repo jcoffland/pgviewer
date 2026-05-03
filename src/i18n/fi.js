@@ -7,6 +7,18 @@ export default {
   'Analysis':                             'Analyysi',
   'Flights':                              'Lennot',
   'Tracks':                               'Reitit',
+  'Selected track coloring':              'Valitun reitin väritys',
+  'No track selected':                    'Ei valittua reittiä',
+  'File':                                 'Tiedosto',
+  'Pilot':                                'Lentäjä',
+  'Glider':                               'Varjo',
+  'Distance':                             'Matka',
+  'Duration':                             'Kesto',
+  'Start':                                'Aloitus',
+  'End':                                  'Lopetus',
+  'Show track':                           'Näytä reitti',
+  'Hide track':                           'Piilota reitti',
+  'Remove track':                         'Poista reitti',
   'About':                                'Tietoja',
 
   // Layer toggles

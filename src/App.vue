@@ -3,6 +3,7 @@ import GlobeViewer    from './components/GlobeViewer.vue'
 import AltitudeChart  from './components/AltitudeChart.vue'
 import TrackControls  from './components/TrackControls.vue'
 import {parseIgc}     from './igc/index.js'
+import {COLORINGS}    from './igc/colorings.js'
 import {pack, unpack} from './share/bundle.js'
 import {uploadBlob, fetchById} from './share/backend.js'
 import {LANGUAGES, setLang}    from './i18n/index.js'
@@ -46,6 +47,9 @@ export default {
       langOpen:         false,
       settingsOpen:     false,
       aboutOpen:        false,
+      selectedFlightId: null,
+      primaryColoring:  'climb',
+      colorings:        COLORINGS,
       LANGUAGES,
     }
   },
@@ -76,6 +80,7 @@ export default {
       }
       if (added.length) {
         this.flights = [...this.flights, ...added]
+        if (this.selectedFlightId == null) this.selectedFlightId = added[0].id
         this.clearShareHash()
       }
     },
@@ -85,18 +90,27 @@ export default {
     makeFlight(name, text, id, index) {
       const track = parseIgc(text, name)
       const color = FLIGHT_COLORS[index % FLIGHT_COLORS.length]
-      const coloringKey = index == 0 ? 'climb' : 'solid_color'
-      return {id, track, color, coloringKey, text, terrainHeights: null}
+      return {id, track, color, hidden: false, text, terrainHeights: null}
     },
 
     removeFlight(id) {
-      this.flights = this.flights.filter(f => f.id != id)
+      const wasSelected = this.selectedFlightId == id
+      const idx = this.flights.findIndex(f => f.id == id)
+      const remaining = this.flights.filter(f => f.id != id)
+      this.flights = remaining
+      if (wasSelected) {
+        // Pick the flight that took the removed slot's position; fall
+        // back to the new last entry, or null if empty.
+        const next = remaining[idx] || remaining[remaining.length - 1] || null
+        this.selectedFlightId = next ? next.id : null
+      }
       this.clearShareHash()
     },
 
     clearFlights() {
-      this.flights     = []
-      this.parseErrors = []
+      this.flights          = []
+      this.selectedFlightId = null
+      this.parseErrors      = []
       this.clearShareHash()
     },
 
@@ -108,9 +122,11 @@ export default {
         history.replaceState(null, '', location.pathname + location.search)
     },
 
-    setFlightColoring({id, key}) {
+    selectFlight(id) {this.selectedFlightId = id},
+
+    toggleHidden(id) {
       this.flights = this.flights.map(
-        f => f.id == id ? {...f, coloringKey: key} : f)
+        f => f.id == id ? {...f, hidden: !f.hidden} : f)
     },
 
     nextId() {
@@ -197,7 +213,10 @@ export default {
             this.parseErrors.push({name: f.name, msg: e.message})
           }
         }
-        if (added.length) this.flights = [...this.flights, ...added]
+        if (added.length) {
+          this.flights = [...this.flights, ...added]
+          if (this.selectedFlightId == null) this.selectedFlightId = added[0].id
+        }
       } catch (e) {
         this.parseErrors.push({name: 'shared link', msg: e.message})
       } finally {
@@ -214,10 +233,12 @@ export default {
   .main
     track-controls.controls(
       :flights='flights',
+      :selected-id='selectedFlightId',
       :collapsed='collapsedSide',
       :parse-errors='parseErrors',
       @files='addFiles',
-      @update:coloring='setFlightColoring',
+      @select='selectFlight',
+      @toggle-hidden='toggleHidden',
       @update:collapsed='collapsedSide = $event',
       @share='createShareLink',
       @clear='clearFlights',
@@ -227,6 +248,8 @@ export default {
       globe-viewer.viewer(
         ref='globe',
         :flights='flights',
+        :selected-id='selectedFlightId',
+        :primary-coloring='primaryColoring',
         :show-shadow='showShadow',
         :show-altitude-marks='showAltitudeMarks',
         :show-time-marks='showTimeMarks',
@@ -268,6 +291,7 @@ export default {
 
   altitude-chart.chart(
     :flights='flights',
+    :selected-id='selectedFlightId',
     :collapsed='collapsedChart',
     :hover-time='hoverTime',
     @update:collapsed='collapsedChart = $event',
@@ -286,6 +310,16 @@ export default {
 
   .modal-overlay(v-if='settingsOpen', @click.self='settingsOpen = false')
     .modal.settings-modal
+      section
+        h3 {{ $t('Selected track coloring') }}
+        select(v-model='primaryColoring')
+          option(
+            v-for='c in colorings',
+            :key='c.key',
+            :value='c.key',
+            :title='$t(c.help)')
+            | {{ $t(c.label) }}
+
       section
         h3 {{ $t('Layers') }}
         .options
