@@ -23,9 +23,12 @@ export default {
 
   computed: {
     lang() {return currentLang.value},
+    selectedFlight() {
+      if (this.selectedId == null) return null
+      return this.flights.find(f => f.id == this.selectedId) || null
+    },
     displayFlights() {
-      if (this.selectedId == null) return this.flights
-      const sel = this.flights.find(f => f.id == this.selectedId)
+      const sel = this.selectedFlight
       return sel ? [sel] : this.flights
     },
     hoverX() {
@@ -33,8 +36,29 @@ export default {
       const x = this.plot.valToPos(this.hoverTime, 'x')
       if (x < 0 || x > this.plot.bbox.width / devicePixelRatio) return null
       const overRect = this.plot.over.getBoundingClientRect()
-      const bodyRect = this.$refs.container.parentElement.getBoundingClientRect()
-      return overRect.left - bodyRect.left + x
+      const wrapRect = this.$refs.container.parentElement.getBoundingClientRect()
+      return overRect.left - wrapRect.left + x
+    },
+    // Stats at the hover time, for the selected flight only. null when no
+    // selection or no hover. Each value is a preformatted string or '—'.
+    hoverStats() {
+      const f = this.selectedFlight
+      if (!f || this.hoverTime == null) return null
+      const t = f.track.t
+      if (t.length < 2) return null
+      const i = this.nearestIndex(t, this.hoverTime)
+      const c = f.track.coords[i]
+      const terr = f.terrainHeights ? f.terrainHeights[i] : null
+      const climb = f.track.climb[Math.min(i, f.track.climb.length - 1)]
+      const sp    = f.avgSpeeds ? f.avgSpeeds[i] : null
+      return {
+        time:   this.timeStr(t[i]) + ' UTC',
+        msl:    `${Math.round(c.ele)} m`,
+        agl:    terr == null ? '—' : `${Math.round(c.ele - terr)} m`,
+        ground: terr == null ? '—' : `${Math.round(terr)} m`,
+        climb:  climb == null ? '—' : `${climb.toFixed(1)} m/s`,
+        speed:  sp    == null ? '—' : `${sp.toFixed(1)} km/h`,
+      }
     },
   },
 
@@ -63,6 +87,25 @@ export default {
       if (t.pilotName)  parts.push(t.pilotName)
       if (t.gliderType) parts.push(t.gliderType)
       return parts.length ? parts.join(' · ') : t.filename
+    },
+
+    timeStr(unix) {
+      const d = new Date(unix * 1000)
+      const hh = String(d.getUTCHours()).padStart(2, '0')
+      const mm = String(d.getUTCMinutes()).padStart(2, '0')
+      const ss = String(d.getUTCSeconds()).padStart(2, '0')
+      return `${hh}:${mm}:${ss}`
+    },
+
+    // Binary search: index of t-array entry closest to target.
+    nearestIndex(arr, target) {
+      let lo = 0, hi = arr.length - 1
+      while (lo + 1 < hi) {
+        const mid = (lo + hi) >> 1
+        if (arr[mid] < target) lo = mid
+        else                   hi = mid
+      }
+      return target - arr[lo] < arr[hi] - target ? lo : hi
     },
 
     build() {
@@ -96,18 +139,32 @@ export default {
       const {clientWidth, clientHeight} = this.$refs.container
       if (clientWidth <= 0 || clientHeight <= 0) return
 
+      // Format the X axis with HH:MM only (no date row at the bottom).
+      const fmtTick = ts => {
+        const d = new Date(ts * 1000)
+        const hh = String(d.getUTCHours()).padStart(2, '0')
+        const mm = String(d.getUTCMinutes()).padStart(2, '0')
+        return `${hh}:${mm}`
+      }
+
       const opts = {
         width:  clientWidth,
         height: clientHeight,
         scales: {x: {time: true}},
         series,
         axes: [
-          {stroke: '#888', grid: {stroke: '#333'}},
+          {
+            stroke: '#888',
+            grid:   {stroke: '#333'},
+            values: (u, splits) => splits.map(fmtTick),
+          },
           {stroke: '#888', grid: {stroke: '#333'}, label: this.$t('altitude (m)')},
         ],
         cursor: {
           drag:   {x: false, y: false},
           points: {show: true},
+          x:      true,
+          y:      false,
           sync:   {key: 'igc'},
         },
         hooks: {
@@ -191,8 +248,28 @@ export default {
       chevron-down(v-else, :size='16')
   .body(@dblclick='$emit("zoom-to-fit")')
     .empty(v-if='!flights.length') {{ $t('No flights loaded') }}
-    .container(ref='container')
-    .hover-line(v-if='hoverX != null', :style='{left: hoverX + "px"}')
+    .chart-wrap
+      .container(ref='container')
+      .hover-line(v-if='hoverX != null', :style='{left: hoverX + "px"}')
+    .hover-table(v-if='selectedFlight')
+      .hover-row
+        span.k {{ $t('Time') }}
+        span.v {{ hoverStats ? hoverStats.time : '—' }}
+      .hover-row
+        span.k {{ $t('Alt MSL') }}
+        span.v {{ hoverStats ? hoverStats.msl : '—' }}
+      .hover-row
+        span.k {{ $t('Alt AGL') }}
+        span.v {{ hoverStats ? hoverStats.agl : '—' }}
+      .hover-row
+        span.k {{ $t('Ground') }}
+        span.v {{ hoverStats ? hoverStats.ground : '—' }}
+      .hover-row
+        span.k {{ $t('Climb') }}
+        span.v {{ hoverStats ? hoverStats.climb : '—' }}
+      .hover-row
+        span.k {{ $t('Speed') }}
+        span.v {{ hoverStats ? hoverStats.speed : '—' }}
 </template>
 
 
@@ -255,21 +332,51 @@ export default {
 
   .body
     flex 1
-    position relative
+    display flex
     min-height 0
 
-  .container
-    position absolute
-    inset 0
+  .chart-wrap
+    flex 1
+    position relative
+    min-width 0
 
   .hover-line
     position absolute
     top 0
     bottom 0
     width 0
-    border-left 1px dashed #888
+    border-left 1px solid #888
     pointer-events none
     z-index 5
+
+  .container
+    position absolute
+    inset 0
+
+  .hover-table
+    width 175px
+    flex-shrink 0
+    border-left 1px solid #333
+    background #1a1a1a
+    padding 6px 8px
+    display flex
+    flex-direction column
+    gap 2px
+    font-size 12px
+
+    .hover-row
+      display flex
+      gap 6px
+      white-space nowrap
+
+      .k
+        color #888
+        min-width 60px
+
+      .v
+        flex 1
+        text-align right
+        font-variant-numeric tabular-nums
 
   .empty
     position absolute

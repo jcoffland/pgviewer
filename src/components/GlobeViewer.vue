@@ -339,6 +339,7 @@ export default {
             color:        Cesium.Color.fromCssColorString(f.color),
             outlineColor: Cesium.Color.WHITE,
             outlineWidth: 1,
+            disableDepthTestDistance: Number.POSITIVE_INFINITY,
           },
         }))
       }

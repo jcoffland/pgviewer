@@ -12,6 +12,7 @@ export default {
   'Pilot':                                'Pilot',
   'Glider':                               'Schirm',
   'Distance':                             'Entfernung',
+  'Points':                               'Punkte',
   'Score':                                'Wertung',
   'Route':                                'Route',
   'Duration':                             'Dauer',
@@ -50,6 +51,10 @@ export default {
   'Energy':                               'Energie',
   'Ground speed':                         'Geschwindigkeit über Grund',
   'Time':                                 'Zeit',
+  'Speed':                                'Geschw.',
+  'Alt MSL':                              'Höhe MSL',
+  'Alt AGL':                              'Höhe AGL',
+  'Ground':                               'Boden',
   'Solid color':                          'Einfarbig',
   'Hidden':                               'Ausgeblendet',
 

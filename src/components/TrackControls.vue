@@ -54,7 +54,7 @@ export default {
     routeTitle(f) {
       const parts = [`${this.distanceKm(f)} km`]
       if (f.score) parts.push(f.score.name)
-      parts.push(`${this.pointsStr(f)} p.`)
+      parts.push(this.pointsStr(f))
       return parts.join(' · ')
     },
 
@@ -170,11 +170,13 @@ export default {
             span.k {{ $t('File') }}
             span.v(:title='selected.track.filename || ""') {{ selected.track.filename || '<unknown>' }}
           .detail-row
-            span.k {{ $t('Route') }}
+            span.k {{ $t('Distance') }}
+            span.v(:title='distanceKm(selected) + " km"') {{ distanceKm(selected) }} km
+          .detail-row
+            span.k {{ $t('Points') }}
             span.v.score-line(:title='routeTitle(selected)')
-              | {{ distanceKm(selected) }} km
               img.type-icon(v-if='typeIcon(selected)', :src='typeIcon(selected)', :alt='typeLabel(selected)')
-              | {{ pointsStr(selected) }} p.
+              | {{ pointsStr(selected) }}
           .detail-row
             span.k {{ $t('Airtime') }}
             span.v(:title='durationStr(selected)') {{ durationStr(selected) || '<unknown>' }}

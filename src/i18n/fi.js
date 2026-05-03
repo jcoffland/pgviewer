@@ -13,6 +13,7 @@ export default {
   'Pilot':                                'Lentäjä',
   'Glider':                               'Varjo',
   'Distance':                             'Matka',
+  'Points':                               'Pisteet',
   'Score':                                'Pisteet',
   'Route':                                'Reitti',
   'Duration':                             'Kesto',
@@ -55,6 +56,10 @@ export default {
   'Energy':                               'Energia',
   'Ground speed':                         'Maanopeus',
   'Time':                                 'Aika',
+  'Speed':                                'Nopeus',
+  'Alt MSL':                              'Korkeus MSL',
+  'Alt AGL':                              'Korkeus AGL',
+  'Ground':                               'Maa',
   'Solid color':                          'Yksivärinen',
   'Hidden':                               'Piilotettu',
 

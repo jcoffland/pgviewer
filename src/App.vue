@@ -4,6 +4,7 @@ import AltitudeChart  from './components/AltitudeChart.vue'
 import TrackControls  from './components/TrackControls.vue'
 import {parseIgc}     from './igc/index.js'
 import {computeScore} from './igc/score.js'
+import {trailingAvgSpeeds} from './igc/avgSpeed.js'
 import {COLORINGS}    from './igc/colorings.js'
 import {pack, unpack} from './share/bundle.js'
 import {uploadBlob, fetchById} from './share/backend.js'
@@ -96,7 +97,8 @@ export default {
     makeFlight(name, text, id, index) {
       const track = parseIgc(text, name)
       const color = FLIGHT_COLORS[index % FLIGHT_COLORS.length]
-      const flight = {id, track, color, hidden: false, text,
+      const avgSpeeds = trailingAvgSpeeds(track, 300)
+      const flight = {id, track, color, hidden: false, text, avgSpeeds,
                       terrainHeights: null, score: null}
       // Defer scoring well past initial render so it can't block share-load
       // flow. Each flight runs serially via a promise chain so we don't pin
