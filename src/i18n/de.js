@@ -19,7 +19,7 @@ export default {
   'Airtime':                              'Flugzeit',
   'Date':                                 'Datum',
   'Max altitude':                         'Max. Höhe',
-  'Max alt. gain':                        'Max. Höhengewinn',
+  'Max alt. gain':                        'Max. Anstieg',
   'Max climb':                            'Max. Steigen',
   'Max sink':                             'Max. Sinken',
   'Avg speed':                            'Ø Geschw.',

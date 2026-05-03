@@ -19,7 +19,7 @@ export default {
   'Airtime':                              'Tempo di volo',
   'Date':                                 'Data',
   'Max altitude':                         'Quota max',
-  'Max alt. gain':                        'Guadagno max',
+  'Max alt. gain':                        'Dislivello max',
   'Max climb':                            'Salita max',
   'Max sink':                             'Discesa max',
   'Avg speed':                            'Vel. media',
