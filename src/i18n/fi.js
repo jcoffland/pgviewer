@@ -18,6 +18,7 @@ export default {
   'Route':                                'Reitti',
   'Duration':                             'Kesto',
   'Airtime':                              'Lentoaika',
+  'Date':                                 'Päivä',
   'Max altitude':                         'Maks. korkeus',
   'Max alt. gain':                        'Maks. nousu',
   'Max climb':                            'Maks. nousuvauhti',
@@ -44,6 +45,8 @@ export default {
   'Dives':                                'Syöksyt',
 
   // Buttons
+  'Share':                                'Jaa',
+  'Clear':                                'Tyhjennä',
   'Create shareable link':                'Luo jaettava linkki',
   'Clear all':                            'Tyhjennä',
   'Copy':                                 'Kopioi',
@@ -80,6 +83,8 @@ export default {
   'Fullscreen':                           'Koko näyttö',
   'Exit fullscreen':                      'Poistu koko näytöltä',
   'Snap to view':                         'Sovita näkymään',
+  'Switch to 2D':                         'Vaihda 2D:hen',
+  'Switch to 3D':                         'Vaihda 3D:hen',
   'Settings':                             'Asetukset',
   'Expand':                               'Laajenna',
   'Collapse':                             'Tiivistä',
@@ -93,6 +98,7 @@ export default {
   // Empty / status
   'Drop one or more IGC files to begin.': 'Pudota yksi tai useampi IGC-tiedosto aloittaaksesi.',
   'Drop IGC files or click to choose':    'Pudota IGC-tiedostot tai napsauta valitaksesi',
+  'Drop or click to add IGC':             'Pudota tai napsauta IGC',
   'No flights loaded':                    'Ei lentoja ladattuna',
   'altitude (m)':                         'korkeus (m)',
 

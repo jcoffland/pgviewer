@@ -127,6 +127,14 @@ export default {
       return `${hh}:${mm}`
     },
 
+    dateStr(unix) {
+      const d = new Date(unix * 1000)
+      const y = d.getUTCFullYear()
+      const m = String(d.getUTCMonth() + 1).padStart(2, '0')
+      const dd = String(d.getUTCDate()).padStart(2, '0')
+      return `${y}-${m}-${dd}`
+    },
+
     onRowClick(id) {
       this.$emit('select', id == this.selectedId ? null : id)
     },
@@ -141,17 +149,12 @@ export default {
     button.icon(:title='$t("Expand")')
       chevron-right(:size='16')
   template(v-else)
-    .header
-      .title PG Viewer
-      button.icon(:title='$t("Collapse")', @click='$emit("update:collapsed", true)')
-        chevron-left(:size='16')
-
     .body
       section
-        file-dropzone(@files='$emit("files", $event)')
-        button.share-btn(:disabled='!flights.length', @click='$emit("share")')
-          share2(:size='14')
-          | {{ $t('Create shareable link') }}
+        .dropzone-row
+          file-dropzone(@files='$emit("files", $event)')
+          button.icon.collapse-btn(:title='$t("Collapse")', @click='$emit("update:collapsed", true)')
+            chevron-left(:size='16')
         .errors(v-if='parseErrors.length')
           .error(v-for='e in parseErrors', :key='e.name')
             | {{ e.name }}: {{ e.msg }}
@@ -159,7 +162,34 @@ export default {
       section(v-if='flights.length')
         h3 {{ $t('Tracks') }}
 
-        .detail(v-if='selected')
+        .track-list
+          .track-row(
+            v-for='f in flights',
+            :key='f.id',
+            :class='{selected: f.id == selectedId, dim: f.hidden}',
+            @click='onRowClick(f.id)')
+            .swatch(:style='{background: f.color}')
+            .name(:title='legendFor(f)') {{ legendFor(f) }}
+            button.icon.row-btn(
+              :title='f.hidden ? $t("Show track") : $t("Hide track")',
+              @click.stop='$emit("toggle-hidden", f.id)')
+              eye-off(v-if='f.hidden', :size='14')
+              eye(v-else, :size='14')
+            button.icon.row-btn(
+              :title='$t("Remove track")',
+              @click.stop='$emit("remove", f.id)')
+              x(:size='14')
+
+        .action-row
+          button.action-btn(@click='$emit("share")')
+            share2(:size='14')
+            | {{ $t('Share') }}
+          button.action-btn(@click='$emit("clear")')
+            trash-2(:size='14')
+            | {{ $t('Clear') }}
+
+      section.detail-section(v-if='selected')
+        .detail
           .detail-head
             .swatch(:style='{background: selected.color}')
             .detail-title(:title='selected.track.pilotName || selected.track.filename') {{ selected.track.pilotName || selected.track.filename }}
@@ -180,6 +210,9 @@ export default {
           .detail-row
             span.k {{ $t('Airtime') }}
             span.v(:title='durationStr(selected)') {{ durationStr(selected) || '<unknown>' }}
+          .detail-row
+            span.k {{ $t('Date') }}
+            span.v(:title='selected.track.t.length ? dateStr(selected.track.t[0]) : ""') {{ selected.track.t.length ? dateStr(selected.track.t[0]) : '<unknown>' }}
           .detail-row
             span.k {{ $t('Start') }}
             span.v(:title='selected.track.t.length ? timeStr(selected.track.t[0]) + " UTC" : ""') {{ selected.track.t.length ? timeStr(selected.track.t[0]) + ' UTC' : '<unknown>' }}
@@ -207,31 +240,6 @@ export default {
           .detail-row(v-if='comments(selected)')
             span.k {{ $t('Comments') }}
             span.v(:title='comments(selected)') {{ comments(selected) }}
-
-        .detail.empty(v-else)
-          | {{ $t('No track selected') }}
-
-        .track-list
-          .track-row(
-            v-for='f in flights',
-            :key='f.id',
-            :class='{selected: f.id == selectedId, dim: f.hidden}',
-            @click='onRowClick(f.id)')
-            .swatch(:style='{background: f.color}')
-            .name(:title='legendFor(f)') {{ legendFor(f) }}
-            button.icon.row-btn(
-              :title='f.hidden ? $t("Show track") : $t("Hide track")',
-              @click.stop='$emit("toggle-hidden", f.id)')
-              eye-off(v-if='f.hidden', :size='14')
-              eye(v-else, :size='14')
-            button.icon.row-btn(
-              :title='$t("Remove track")',
-              @click.stop='$emit("remove", f.id)')
-              x(:size='14')
-
-        button.clear-btn(@click='$emit("clear")')
-          trash-2(:size='14')
-          | {{ $t('Clear all') }}
 </template>
 
 
@@ -259,18 +267,17 @@ export default {
     &:hover
       background #2a2a2a
 
-  .header
+  .dropzone-row
     display flex
-    align-items center
-    gap 4px
-    padding 8px 8px 8px 12px
-    border-bottom 1px solid #333
-    flex-shrink 0
+    align-items stretch
+    gap 6px
 
-    .title
+    .dropzone
       flex 1
-      font-weight 600
-      font-size 14px
+
+    .collapse-btn
+      flex-shrink 0
+      padding 4px 6px
 
   .body
     flex 1
@@ -285,20 +292,23 @@ export default {
     .error
       margin-top 2px
 
-  .share-btn,
-  .clear-btn
-    margin-top 8px
-    width 100%
-    padding 6px 10px
-    font-size 12px
+  .action-row
     display flex
-    align-items center
-    justify-content center
     gap 6px
+    margin-top 8px
 
-    &:disabled
-      opacity 0.4
-      cursor not-allowed
+    .action-btn
+      flex 1
+      padding 6px 10px
+      font-size 12px
+      display flex
+      align-items center
+      justify-content center
+      gap 6px
+
+      &:disabled
+        opacity 0.4
+        cursor not-allowed
 
   button.icon
     background transparent
@@ -356,15 +366,7 @@ export default {
     padding 8px
     margin-bottom 8px
     font-size 12px
-    min-height 280px
     box-sizing border-box
-
-    &.empty
-      color #666
-      font-style italic
-      display flex
-      align-items center
-      justify-content center
 
     .detail-head
       display flex

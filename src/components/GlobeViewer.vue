@@ -34,6 +34,7 @@ export default {
     showDives:         Boolean,
     hoverTime:         {type: Number, default: null},
     showEmpty:         {type: Boolean, default: true},
+    mode2D:            Boolean,
   },
 
   emits: ['terrain-ready'],
@@ -59,6 +60,7 @@ export default {
         maximumAnisotropy: Number.POSITIVE_INFINITY,  // GPU max
       }),
       terrain,
+      mapMode2D:            Cesium.MapMode2D.ROTATE,
       baseLayerPicker:      false,
       geocoder:             false,
       homeButton:           false,
@@ -75,6 +77,25 @@ export default {
     this.viewer.scene.globe.preloadAncestors        = true
     this.viewer.scene.globe.preloadSiblings         = true
     this.viewer.cesiumWidget.creditContainer.style.display = 'none'
+
+    // Topo basemap, layered on top of the satellite when 2D mode is on.
+    // OpenTopoMap is XContest's basemap of choice; tiles are public but
+    // throttled, so this is appropriate for a small viewer.
+    this.topoLayer = this.viewer.imageryLayers.addImageryProvider(
+      new Cesium.UrlTemplateImageryProvider({
+        url:                'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        subdomains:         ['a', 'b', 'c'],
+        maximumLevel:       17,
+        credit:             'Map data: © OpenStreetMap, SRTM | Map style: © OpenTopoMap (CC-BY-SA)',
+      }))
+    this.topoLayer.show = this.mode2D
+
+    // Remember the default rotate event mapping so we can extend it with
+    // middle/ctrl-left drag while in 2D and restore on the way out.
+    const ssc = this.viewer.scene.screenSpaceCameraController
+    this._defaultRotateEvents = ssc.rotateEventTypes
+
+    this.applySceneMode()
     this.syncFlights()
   },
 
@@ -94,6 +115,7 @@ export default {
     showGlides:        'syncVisibility',
     showDives:         'syncVisibility',
     hoverTime:         'syncHover',
+    mode2D:            'applySceneMode',
   },
 
   methods: {
@@ -220,17 +242,68 @@ export default {
 
     flyToLayers(layers) {
       if (!layers.length) return
-      const spheres = layers.map(l => l.boundingSphere())
-      const union = spheres.reduce(
-        (acc, s) => Cesium.BoundingSphere.union(acc, s), spheres[0])
-      this.flyToSphere(union)
+      // In top-down ("2D") mode, fit by lat/lon rectangle so the user sees
+      // exactly the area covered. In 3D mode the bounding-sphere fit
+      // gives a nicer perspective drop-in.
+      if (this.mode2D) this.flyToRectangle(layers)
+      else {
+        const spheres = layers.map(l => l.boundingSphere())
+        const union = spheres.reduce(
+          (acc, s) => Cesium.BoundingSphere.union(acc, s), spheres[0])
+        this.flyToSphere(union)
+      }
     },
 
     flyToSphere(sphere) {
+      const pitch = this.mode2D ? -Cesium.Math.PI_OVER_TWO : CAMERA_PITCH
       this.viewer.camera.flyToBoundingSphere(sphere, {
         duration: 1.0,
-        offset:   new Cesium.HeadingPitchRange(0, CAMERA_PITCH, sphere.radius * 1.75),
+        offset:   new Cesium.HeadingPitchRange(0, pitch, sphere.radius * 1.75),
       })
+    },
+
+    // Top-down rectangle fit. Pads the geographic bounds slightly so the
+    // tracks aren't flush against the screen edges.
+    flyToRectangle(layers) {
+      let minLon =  180, maxLon = -180
+      let minLat =   90, maxLat =  -90
+      for (const layer of layers) {
+        for (const c of layer.flight.track.coords) {
+          if (c.lonDeg < minLon) minLon = c.lonDeg
+          if (maxLon < c.lonDeg) maxLon = c.lonDeg
+          if (c.latDeg < minLat) minLat = c.latDeg
+          if (maxLat < c.latDeg) maxLat = c.latDeg
+        }
+      }
+      const padLon = (maxLon - minLon) * 0.1 || 0.01
+      const padLat = (maxLat - minLat) * 0.1 || 0.01
+      this.viewer.camera.flyTo({
+        destination: Cesium.Rectangle.fromDegrees(
+          minLon - padLon, minLat - padLat,
+          maxLon + padLon, maxLat + padLat),
+        duration: 1.0,
+      })
+    },
+
+    applySceneMode() {
+      if (!this.viewer) return
+      const ssc = this.viewer.scene.screenSpaceCameraController
+      ssc.enableTilt = !this.mode2D
+      ssc.enableLook = !this.mode2D
+      // In 2D, remap MIDDLE_DRAG and CTRL+LEFT_DRAG (which Cesium would
+      // otherwise tilt/look with) to rotate gestures so the user can yaw.
+      // In 3D, restore the default mapping.
+      if (this.mode2D) {
+        ssc.rotateEventTypes = [
+          Cesium.CameraEventType.LEFT_DRAG,
+          Cesium.CameraEventType.MIDDLE_DRAG,
+          {eventType: Cesium.CameraEventType.LEFT_DRAG,
+           modifier:  Cesium.KeyboardEventModifier.CTRL},
+        ]
+      } else
+        ssc.rotateEventTypes = this._defaultRotateEvents
+      this.topoLayer.show = this.mode2D
+      this.flyToAll()
     },
 
     flyToAll() {this.flyToLayers([...this.layers.values()])},
@@ -278,8 +351,9 @@ export default {
       // measured from north (y), increasing east (x).
       const heading = Math.atan2(-axisN, axisE)
 
-      // Camera basis in local ENU, with pitch = -45° and the chosen heading.
-      const pitch = CAMERA_PITCH
+      // Camera basis in local ENU. Pitch follows current top-down toggle:
+      // -90° in 2D mode, -45° otherwise.
+      const pitch = this.mode2D ? -Cesium.Math.PI_OVER_TWO : CAMERA_PITCH
       const cp = Math.cos(pitch), sp = Math.sin(pitch)
       const ch = Math.cos(heading), sh = Math.sin(heading)
       // Cesium's HeadingPitchRange: heading 0 = +y (north), pitch 0 = horizontal,

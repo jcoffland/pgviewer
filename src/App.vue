@@ -54,6 +54,7 @@ export default {
       langOpen:         false,
       settingsOpen:     false,
       aboutOpen:        false,
+      mode2D:           false,
       selectedFlightId: null,
       primaryColoring:  'climb',
       colorings:        COLORINGS,
@@ -288,6 +289,7 @@ export default {
         :show-dives='showDives',
         :hover-time='hoverTime',
         :show-empty='!loadingShare',
+        :mode2-d='mode2D',
         @terrain-ready='onTerrainReady')
       .viewer-buttons
         .lang-selector
@@ -310,6 +312,10 @@ export default {
           :title='$t("Snap to view")',
           @click='snapToView')
           crosshair(:size='16')
+        button.icon.mode-toggle(
+          :title='mode2D ? $t("Switch to 3D") : $t("Switch to 2D")',
+          @click='mode2D = !mode2D')
+          | {{ mode2D ? '2D' : '3D' }}
         button.icon(
           :title='$t("Settings")',
           @click='settingsOpen = !settingsOpen')
@@ -459,6 +465,10 @@ export default {
           &:disabled
             opacity 0.4
             cursor not-allowed
+
+        button.mode-toggle
+          font-size 12px
+          font-weight 600
 
         .lang-selector
           position relative

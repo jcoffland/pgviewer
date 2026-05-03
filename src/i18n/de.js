@@ -17,6 +17,7 @@ export default {
   'Route':                                'Route',
   'Duration':                             'Dauer',
   'Airtime':                              'Flugzeit',
+  'Date':                                 'Datum',
   'Max altitude':                         'Max. Höhe',
   'Max alt. gain':                        'Max. Höhengewinn',
   'Max climb':                            'Max. Steigen',
@@ -40,6 +41,8 @@ export default {
   'Glides':                               'Gleitstrecken',
   'Dives':                                'Sturzflüge',
 
+  'Share':                                'Teilen',
+  'Clear':                                'Löschen',
   'Create shareable link':                'Teilbaren Link erstellen',
   'Clear all':                            'Alles löschen',
   'Copy':                                 'Kopieren',
@@ -74,6 +77,8 @@ export default {
   'Fullscreen':                           'Vollbild',
   'Exit fullscreen':                      'Vollbild beenden',
   'Snap to view':                         'An Ansicht anpassen',
+  'Switch to 2D':                         'Auf 2D umschalten',
+  'Switch to 3D':                         'Auf 3D umschalten',
   'Settings':                             'Einstellungen',
   'Expand':                               'Erweitern',
   'Collapse':                             'Einklappen',
@@ -85,6 +90,7 @@ export default {
 
   'Drop one or more IGC files to begin.': 'Eine oder mehrere IGC-Dateien hier ablegen, um zu beginnen.',
   'Drop IGC files or click to choose':    'IGC-Dateien hier ablegen oder klicken zum Auswählen',
+  'Drop or click to add IGC':             'IGC ablegen oder klicken',
   'No flights loaded':                    'Keine Flüge geladen',
   'altitude (m)':                         'Höhe (m)',
 

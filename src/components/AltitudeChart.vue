@@ -81,14 +81,6 @@ export default {
   },
 
   methods: {
-    legendFor(f) {
-      const t = f.track
-      const parts = []
-      if (t.pilotName)  parts.push(t.pilotName)
-      if (t.gliderType) parts.push(t.gliderType)
-      return parts.length ? parts.join(' · ') : t.filename
-    },
-
     timeStr(unix) {
       const d = new Date(unix * 1000)
       const hh = String(d.getUTCHours()).padStart(2, '0')
@@ -157,6 +149,7 @@ export default {
             stroke: '#888',
             grid:   {stroke: '#333'},
             values: (u, splits) => splits.map(fmtTick),
+            size:   34,
           },
           {stroke: '#888', grid: {stroke: '#333'}, label: this.$t('altitude (m)')},
         ],
@@ -237,10 +230,6 @@ export default {
 .altitude-chart(:class='{collapsed}')
   .header
     .label {{ $t('Altitude') }}
-    .legend(v-if='displayFlights.length')
-      .legend-item(v-for='f in displayFlights', :key='f.id')
-        .dash(:style='{background: f.color}')
-        .legend-text {{ legendFor(f) }}
     button.icon(
       :title='collapsed ? $t("Expand") : $t("Collapse")',
       @click='$emit("update:collapsed", !collapsed)')
@@ -248,9 +237,6 @@ export default {
       chevron-down(v-else, :size='16')
   .body(@dblclick='$emit("zoom-to-fit")')
     .empty(v-if='!flights.length') {{ $t('No flights loaded') }}
-    .chart-wrap
-      .container(ref='container')
-      .hover-line(v-if='hoverX != null', :style='{left: hoverX + "px"}')
     .hover-table(v-if='selectedFlight')
       .hover-row
         span.k {{ $t('Time') }}
@@ -270,6 +256,9 @@ export default {
       .hover-row
         span.k {{ $t('Speed') }}
         span.v {{ hoverStats ? hoverStats.speed : '—' }}
+    .chart-wrap
+      .container(ref='container')
+      .hover-line(v-if='hoverX != null', :style='{left: hoverX + "px"}')
 </template>
 
 
@@ -303,32 +292,7 @@ export default {
       text-transform uppercase
       letter-spacing 0.5px
       color #888
-
-    .legend
       flex 1
-      display flex
-      flex-wrap wrap
-      gap 4px 12px
-      align-items center
-      font-size 11px
-      color #aaa
-      overflow hidden
-
-      .legend-item
-        display flex
-        align-items center
-        gap 6px
-        min-width 0
-
-      .dash
-        width 14px
-        height 2px
-        flex-shrink 0
-
-      .legend-text
-        white-space nowrap
-        overflow hidden
-        text-overflow ellipsis
 
   .body
     flex 1
@@ -356,7 +320,7 @@ export default {
   .hover-table
     width 175px
     flex-shrink 0
-    border-left 1px solid #333
+    border-right 1px solid #333
     background #1a1a1a
     padding 6px 8px
     display flex

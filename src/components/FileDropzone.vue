@@ -38,7 +38,7 @@ label.dropzone(
   @dragover='onDragOver',
   @dragleave='onDragLeave',
   @drop='onDrop')
-  | {{ $t('Drop IGC files or click to choose') }}
+  | {{ $t('Drop or click to add IGC') }}
   input(type='file', accept='.igc', multiple, @change='onPick')
 </template>
 
@@ -54,6 +54,9 @@ label.dropzone(
   cursor pointer
   font-size 12px
   text-align center
+  white-space nowrap
+  overflow hidden
+  text-overflow ellipsis
 
   &:hover, &.dragging
     background #2a3a4a
