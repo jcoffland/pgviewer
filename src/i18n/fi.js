@@ -13,6 +13,7 @@ export default {
   'Pilot':                                'Lentäjä',
   'Glider':                               'Varjo',
   'Distance':                             'Matka',
+  'Score':                                'Pisteet',
   'Duration':                             'Kesto',
   'Start':                                'Aloitus',
   'End':                                  'Lopetus',

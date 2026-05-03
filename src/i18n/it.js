@@ -12,6 +12,7 @@ export default {
   'Pilot':                                'Pilota',
   'Glider':                               'Vela',
   'Distance':                             'Distanza',
+  'Score':                                'Punteggio',
   'Duration':                             'Durata',
   'Start':                                'Inizio',
   'End':                                  'Fine',

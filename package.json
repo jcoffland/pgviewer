@@ -12,7 +12,10 @@
   },
   "dependencies": {
     "cesium": "^1.122.0",
+    "flatbush": "^4.5.1",
+    "igc-parser": "^2.0.0",
     "lucide-vue-next": "^1.0.0",
+    "rbush": "^4.0.1",
     "uplot": "^1.6.31",
     "vue": "^3.5.13"
   },

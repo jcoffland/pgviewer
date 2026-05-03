@@ -12,6 +12,7 @@ export default {
   'Pilot':                                'Pilot',
   'Glider':                               'Schirm',
   'Distance':                             'Entfernung',
+  'Score':                                'Wertung',
   'Duration':                             'Dauer',
   'Start':                                'Start',
   'End':                                  'Ende',

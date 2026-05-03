@@ -2,6 +2,7 @@
 import FileDropzone from './FileDropzone.vue'
 import {ChevronLeft, ChevronRight, Share2, Eye, EyeOff, X, Trash2}
   from 'lucide-vue-next'
+import {TYPE_ICONS} from '../igc/typeIcons.js'
 
 
 export default {
@@ -38,9 +39,16 @@ export default {
     },
 
     distanceKm(f) {
+      // Prefer the optimized XC scoring distance when available; else fall
+      // back to the cumulative haversine distance along the track.
+      if (f.score) return f.score.distance.toFixed(2)
       const s = f.track.s
-      return s.length ? (s[s.length - 1] / 1000).toFixed(1) : '0.0'
+      return s.length ? (s[s.length - 1] / 1000).toFixed(2) : '0.00'
     },
+
+    typeIcon(f) {return f.score ? TYPE_ICONS[f.score.icon] : null},
+    typeLabel(f) {return f.score ? f.score.name : ''},
+    pointsStr(f) {return f.score ? f.score.score.toFixed(2) : '—'},
 
     durationStr(f) {
       const t = f.track.t
@@ -102,8 +110,11 @@ export default {
             span.k {{ $t('File') }}
             span.v {{ selected.track.filename || '<unknown>' }}
           .detail-row
-            span.k {{ $t('Distance') }}
-            span.v {{ distanceKm(selected) }} km
+            span.k {{ $t('Score') }}
+            span.v.score-line
+              | {{ distanceKm(selected) }} km
+              img.type-icon(v-if='typeIcon(selected)', :src='typeIcon(selected)', :alt='typeLabel(selected)', :title='typeLabel(selected)')
+              | {{ pointsStr(selected) }} p.
           .detail-row
             span.k {{ $t('Duration') }}
             span.v {{ durationStr(selected) || '<unknown>' }}
@@ -262,7 +273,7 @@ export default {
     padding 8px
     margin-bottom 8px
     font-size 12px
-    min-height 152px
+    min-height 188px
     box-sizing border-box
 
     &.empty
@@ -300,6 +311,17 @@ export default {
         overflow hidden
         text-overflow ellipsis
         white-space nowrap
+
+        &.score-line
+          display flex
+          align-items center
+          gap 6px
+
+      .type-icon
+        width 14px
+        height 14px
+        flex-shrink 0
+        image-rendering pixelated
 
   .track-list
     display flex

@@ -3,6 +3,7 @@ import GlobeViewer    from './components/GlobeViewer.vue'
 import AltitudeChart  from './components/AltitudeChart.vue'
 import TrackControls  from './components/TrackControls.vue'
 import {parseIgc}     from './igc/index.js'
+import {computeScore} from './igc/score.js'
 import {COLORINGS}    from './igc/colorings.js'
 import {pack, unpack} from './share/bundle.js'
 import {uploadBlob, fetchById} from './share/backend.js'
@@ -95,7 +96,28 @@ export default {
     makeFlight(name, text, id, index) {
       const track = parseIgc(text, name)
       const color = FLIGHT_COLORS[index % FLIGHT_COLORS.length]
-      return {id, track, color, hidden: false, text, terrainHeights: null}
+      const flight = {id, track, color, hidden: false, text,
+                      terrainHeights: null, score: null}
+      // Defer scoring well past initial render so it can't block share-load
+      // flow. Each flight runs serially via a promise chain so we don't pin
+      // the main thread with parallel solver runs.
+      this.scheduleScore(flight)
+      return flight
+    },
+
+    scheduleScore(flight) {
+      if (!this._scoreQueue) this._scoreQueue = Promise.resolve()
+      this._scoreQueue = this._scoreQueue.then(async () => {
+        try {
+          const score = await computeScore(flight.text)
+          if (!score) return
+          if (!this.flights.some(f => f.id == flight.id)) return
+          this.flights = this.flights.map(
+            f => f.id == flight.id ? {...f, score} : f)
+        } catch (e) {
+          console.warn('XC scoring failed for', flight.track.filename, e)
+        }
+      })
     },
 
     removeFlight(id) {
