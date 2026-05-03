@@ -404,8 +404,9 @@ export default {
           overflow visible
 
       .type-icon
+        height calc(1.5em - 2px)
+        width  calc(1.5em - 2px)
         flex-shrink 0
-        image-rendering pixelated
 
   .track-list
     display flex
