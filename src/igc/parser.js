@@ -51,9 +51,15 @@ export const parseIgc = (text, filename = null) => {
   const opts = {filename}
   for (const [k, attr] of [['plt', 'pilotName'],
                             ['gty', 'gliderType'],
-                            ['gid', 'gliderId']]) {
+                            ['gid', 'gliderId'],
+                            ['rmk', 'remark']]) {
     const v = state.h[k]
     if (v && !NOT_SET_RE.test(v)) opts[attr] = v.trim()
+  }
+  // Device: HFFTYFRTYPE: <manufacturer>,<model>  (or just one field)
+  const fty = state.h['fty']
+  if (fty && !NOT_SET_RE.test(fty)) {
+    opts.device = fty.split(',').map(s => s.trim()).filter(Boolean).join(' ')
   }
 
   if (state.c.length) {

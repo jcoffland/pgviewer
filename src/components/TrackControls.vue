@@ -49,6 +49,66 @@ export default {
     typeIcon(f) {return f.score ? TYPE_ICONS[f.score.icon] : null},
     typeLabel(f) {return f.score ? f.score.name : ''},
     pointsStr(f) {return f.score ? f.score.score.toFixed(2) : '—'},
+    bonusStr(f) {return f.score ? '\u00d7' + f.score.bonus.toFixed(1) : '—'},
+
+    routeTitle(f) {
+      const parts = [`${this.distanceKm(f)} km`]
+      if (f.score) parts.push(f.score.name)
+      parts.push(`${this.pointsStr(f)} p.`)
+      return parts.join(' · ')
+    },
+
+    maxAlt(f) {
+      const b = f.track.bounds.ele
+      return b ? `${Math.round(b.max)} m` : '—'
+    },
+
+    // Largest altitude gain inside any single thermal: max(ele) - min(ele)
+    // over the thermal's index range. Robust to ragged entry/exit.
+    maxAltGain(f) {
+      const ths = f.track.thermals
+      if (!ths || !ths.length) return '—'
+      const coords = f.track.coords
+      let best = 0
+      for (const [a, b] of ths) {
+        let lo = Infinity, hi = -Infinity
+        for (let i = a; i <= b; i++) {
+          const e = coords[i].ele
+          if (e < lo) lo = e
+          if (hi < e) hi = e
+        }
+        if (best < hi - lo) best = hi - lo
+      }
+      return `${Math.round(best)} m`
+    },
+
+    maxClimb(f) {
+      const b = f.track.bounds.climb
+      return b ? `${b.max.toFixed(1)} m/s` : '—'
+    },
+
+    maxSink(f) {
+      const b = f.track.bounds.climb
+      return b ? `${(-b.min).toFixed(1)} m/s` : '—'
+    },
+
+    avgSpeed(f) {
+      const t = f.track.t
+      if (t.length < 2) return '—'
+      const dt = t[t.length - 1] - t[0]
+      if (!dt) return '—'
+      // Prefer the optimized XC route distance; fall back to the cumulative
+      // tracklog distance until scoring completes.
+      const km = f.score
+        ? f.score.distance
+        : (f.track.s.length ? f.track.s[f.track.s.length - 1] / 1000 : 0)
+      return `${(km * 3600 / dt).toFixed(2)} km/h`
+    },
+
+    comments(f) {
+      const t = f.track
+      return t.remark || t.device || ''
+    },
 
     durationStr(f) {
       const t = f.track.t
@@ -102,28 +162,49 @@ export default {
         .detail(v-if='selected')
           .detail-head
             .swatch(:style='{background: selected.color}')
-            .detail-title {{ selected.track.pilotName || selected.track.filename }}
+            .detail-title(:title='selected.track.pilotName || selected.track.filename') {{ selected.track.pilotName || selected.track.filename }}
           .detail-row
             span.k {{ $t('Glider') }}
-            span.v {{ selected.track.gliderType || '<unknown>' }}
+            span.v(:title='selected.track.gliderType || ""') {{ selected.track.gliderType || '<unknown>' }}
           .detail-row
             span.k {{ $t('File') }}
-            span.v {{ selected.track.filename || '<unknown>' }}
+            span.v(:title='selected.track.filename || ""') {{ selected.track.filename || '<unknown>' }}
           .detail-row
-            span.k {{ $t('Score') }}
-            span.v.score-line
+            span.k {{ $t('Route') }}
+            span.v.score-line(:title='routeTitle(selected)')
               | {{ distanceKm(selected) }} km
-              img.type-icon(v-if='typeIcon(selected)', :src='typeIcon(selected)', :alt='typeLabel(selected)', :title='typeLabel(selected)')
+              img.type-icon(v-if='typeIcon(selected)', :src='typeIcon(selected)', :alt='typeLabel(selected)')
               | {{ pointsStr(selected) }} p.
           .detail-row
-            span.k {{ $t('Duration') }}
-            span.v {{ durationStr(selected) || '<unknown>' }}
+            span.k {{ $t('Airtime') }}
+            span.v(:title='durationStr(selected)') {{ durationStr(selected) || '<unknown>' }}
           .detail-row
             span.k {{ $t('Start') }}
-            span.v {{ selected.track.t.length ? timeStr(selected.track.t[0]) + ' UTC' : '<unknown>' }}
+            span.v(:title='selected.track.t.length ? timeStr(selected.track.t[0]) + " UTC" : ""') {{ selected.track.t.length ? timeStr(selected.track.t[0]) + ' UTC' : '<unknown>' }}
           .detail-row
             span.k {{ $t('End') }}
-            span.v {{ selected.track.t.length ? timeStr(selected.track.t[selected.track.t.length - 1]) + ' UTC' : '<unknown>' }}
+            span.v(:title='selected.track.t.length ? timeStr(selected.track.t[selected.track.t.length - 1]) + " UTC" : ""') {{ selected.track.t.length ? timeStr(selected.track.t[selected.track.t.length - 1]) + ' UTC' : '<unknown>' }}
+          .detail-row
+            span.k {{ $t('Max altitude') }}
+            span.v(:title='maxAlt(selected)') {{ maxAlt(selected) }}
+          .detail-row
+            span.k {{ $t('Max alt. gain') }}
+            span.v(:title='maxAltGain(selected)') {{ maxAltGain(selected) }}
+          .detail-row
+            span.k {{ $t('Max climb') }}
+            span.v(:title='maxClimb(selected)') {{ maxClimb(selected) }}
+          .detail-row
+            span.k {{ $t('Max sink') }}
+            span.v(:title='maxSink(selected)') {{ maxSink(selected) }}
+          .detail-row
+            span.k {{ $t('Avg speed') }}
+            span.v(:title='avgSpeed(selected)') {{ avgSpeed(selected) }}
+          .detail-row
+            span.k {{ $t('Bonus') }}
+            span.v(:title='bonusStr(selected)') {{ bonusStr(selected) }}
+          .detail-row(v-if='comments(selected)')
+            span.k {{ $t('Comments') }}
+            span.v(:title='comments(selected)') {{ comments(selected) }}
 
         .detail.empty(v-else)
           | {{ $t('No track selected') }}
@@ -135,7 +216,7 @@ export default {
             :class='{selected: f.id == selectedId, dim: f.hidden}',
             @click='onRowClick(f.id)')
             .swatch(:style='{background: f.color}')
-            .name {{ legendFor(f) }}
+            .name(:title='legendFor(f)') {{ legendFor(f) }}
             button.icon.row-btn(
               :title='f.hidden ? $t("Show track") : $t("Hide track")',
               @click.stop='$emit("toggle-hidden", f.id)')
@@ -273,7 +354,7 @@ export default {
     padding 8px
     margin-bottom 8px
     font-size 12px
-    min-height 188px
+    min-height 280px
     box-sizing border-box
 
     &.empty
@@ -304,7 +385,7 @@ export default {
 
       .k
         color #888
-        min-width 60px
+        min-width 78px
 
       .v
         flex 1

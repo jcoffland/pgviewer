@@ -112,6 +112,8 @@ export class Track {
     this.pilotName   = opts.pilotName   || null
     this.gliderType  = opts.gliderType  || null
     this.gliderId    = opts.gliderId    || null
+    this.device      = opts.device      || null
+    this.remark      = opts.remark      || null
     this.declaration = opts.declaration || null
     this._analyse(20)
   }

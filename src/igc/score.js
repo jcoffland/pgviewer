@@ -40,6 +40,7 @@ export const computeScore = async igcText => {
     code:     rule.code,
     icon:     ICON_BY_CODE[rule.code] || 'free',
     name:     rule.name,
+    bonus:    rule.multiplier,
     distance: result.scoreInfo.distance,  // km
     score:    result.score,                // points
   }
