@@ -49,7 +49,7 @@ export default {
     typeIcon(f) {return f.score ? TYPE_ICONS[f.score.icon] : null},
     typeLabel(f) {return f.score ? f.score.name : ''},
     pointsStr(f) {return f.score ? f.score.score.toFixed(2) : '—'},
-    bonusStr(f) {return f.score ? '\u00d7' + f.score.bonus.toFixed(1) : '—'},
+    bonusStr(f) {return f.score ? f.score.bonus.toFixed(1) + '\u00d7' : '—'},
 
     routeTitle(f) {
       const parts = [`${this.distanceKm(f)} km`]
@@ -205,8 +205,8 @@ export default {
           .detail-row
             span.k {{ $t('Points') }}
             span.v.score-line(:title='routeTitle(selected)')
-              img.type-icon(v-if='typeIcon(selected)', :src='typeIcon(selected)', :alt='typeLabel(selected)')
               | {{ pointsStr(selected) }}
+              img.type-icon(v-if='typeIcon(selected)', :src='typeIcon(selected)', :alt='typeLabel(selected)')
           .detail-row
             span.k {{ $t('Airtime') }}
             span.v(:title='durationStr(selected)') {{ durationStr(selected) || '<unknown>' }}
@@ -401,10 +401,9 @@ export default {
           display flex
           align-items center
           gap 6px
+          overflow visible
 
       .type-icon
-        width 14px
-        height 14px
         flex-shrink 0
         image-rendering pixelated
 
