@@ -2,9 +2,12 @@
 import uPlot from 'uplot'
 import 'uplot/dist/uPlot.min.css'
 import {currentLang} from '../i18n/index.js'
+import {ChevronUp, ChevronDown} from 'lucide-vue-next'
 
 
 export default {
+  components: {ChevronUp, ChevronDown},
+
   props: {
     flights:    {type: Array, required: true},
     selectedId: {default: null},
@@ -184,7 +187,8 @@ export default {
     button.icon(
       :title='collapsed ? $t("Expand") : $t("Collapse")',
       @click='$emit("update:collapsed", !collapsed)')
-      | {{ collapsed ? '▴' : '▾' }}
+      chevron-up(v-if='collapsed', :size='16')
+      chevron-down(v-else, :size='16')
   .body(@dblclick='$emit("zoom-to-fit")')
     .empty(v-if='!flights.length') {{ $t('No flights loaded') }}
     .container(ref='container')

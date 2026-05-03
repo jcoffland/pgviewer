@@ -1,9 +1,11 @@
 <script>
 import FileDropzone from './FileDropzone.vue'
+import {ChevronLeft, ChevronRight, Share2, Eye, EyeOff, X, Trash2}
+  from 'lucide-vue-next'
 
 
 export default {
-  components: {FileDropzone},
+  components: {FileDropzone, ChevronLeft, ChevronRight, Share2, Eye, EyeOff, X, Trash2},
 
   props: {
     flights:           {type: Array, required: true},
@@ -68,17 +70,19 @@ export default {
 <template lang="pug">
 .track-controls(:class='{collapsed}')
   .strip(v-if='collapsed', @click='$emit("update:collapsed", false)')
-    button.icon(:title='$t("Expand")') ›
+    button.icon(:title='$t("Expand")')
+      chevron-right(:size='16')
   template(v-else)
     .header
       .title PG Viewer
-      button.icon(:title='$t("Collapse")', @click='$emit("update:collapsed", true)') ‹
+      button.icon(:title='$t("Collapse")', @click='$emit("update:collapsed", true)')
+        chevron-left(:size='16')
 
     .body
       section
         file-dropzone(@files='$emit("files", $event)')
         button.share-btn(:disabled='!flights.length', @click='$emit("share")')
-          span.btn-icon 🔗︎
+          share2(:size='14')
           | {{ $t('Create shareable link') }}
         .errors(v-if='parseErrors.length')
           .error(v-for='e in parseErrors', :key='e.name')
@@ -123,16 +127,16 @@ export default {
             .name {{ legendFor(f) }}
             button.icon.row-btn(
               :title='f.hidden ? $t("Show track") : $t("Hide track")',
-              :class='{dim: f.hidden}',
               @click.stop='$emit("toggle-hidden", f.id)')
-              | 👁
+              eye-off(v-if='f.hidden', :size='14')
+              eye(v-else, :size='14')
             button.icon.row-btn(
               :title='$t("Remove track")',
               @click.stop='$emit("remove", f.id)')
-              | ✕
+              x(:size='14')
 
         button.clear-btn(@click='$emit("clear")')
-          span.btn-icon 🗑
+          trash-2(:size='14')
           | {{ $t('Clear all') }}
 </template>
 
@@ -193,9 +197,10 @@ export default {
     width 100%
     padding 6px 10px
     font-size 12px
-
-    .btn-icon
-      margin-right 6px
+    display flex
+    align-items center
+    justify-content center
+    gap 6px
 
     &:disabled
       opacity 0.4
@@ -322,13 +327,12 @@ export default {
     .row-btn
       padding 0
       margin 0
-      font-size 11px
       line-height 1
       flex-shrink 0
       min-width 14px
-
-      &.dim
-        opacity 0.35
+      display flex
+      align-items center
+      justify-content center
 
     .row-btn + .row-btn
       margin-left -2px

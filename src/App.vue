@@ -7,6 +7,8 @@ import {COLORINGS}    from './igc/colorings.js'
 import {pack, unpack} from './share/bundle.js'
 import {uploadBlob, fetchById} from './share/backend.js'
 import {LANGUAGES, setLang}    from './i18n/index.js'
+import {Maximize, Minimize, Crosshair, Settings, Info}
+  from 'lucide-vue-next'
 
 
 // Hash prefix for the share URL. Bumping this lets us evolve the format.
@@ -24,7 +26,10 @@ const FLIGHT_COLORS = [
 
 
 export default {
-  components: {GlobeViewer, AltitudeChart, TrackControls},
+  components: {
+    GlobeViewer, AltitudeChart, TrackControls,
+    Maximize, Minimize, Crosshair, Settings, Info,
+  },
 
   data() {
     return {
@@ -274,20 +279,21 @@ export default {
         button.icon(
           :title='isFullscreen ? $t("Exit fullscreen") : $t("Fullscreen")',
           @click='toggleFullscreen')
-          | {{ isFullscreen ? '⇲' : '⛶' }}
+          minimize(v-if='isFullscreen', :size='16')
+          maximize(v-else, :size='16')
         button.icon(
           :disabled='!flights.length',
           :title='$t("Snap to view")',
           @click='snapToView')
-          | ⌖
+          crosshair(:size='16')
         button.icon(
           :title='$t("Settings")',
           @click='settingsOpen = !settingsOpen')
-          | ⚙
+          settings(:size='16')
         button.icon(
           :title='$t("About")',
           @click='aboutOpen = !aboutOpen')
-          | ℹ
+          info(:size='16')
 
   altitude-chart.chart(
     :flights='flights',
