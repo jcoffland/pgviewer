@@ -125,19 +125,15 @@ export default {
       return f.id == this.selectedId ? this.primaryColoring : 'solid_color'
     },
 
-    // The flights array changed. Three kinds of change:
-    //   - flight added       → build new layer with current aggregate scales
-    //   - flight removed     → detach old layer; rebuild remaining tracks
-    //                          because aggregate scales widened/narrowed
-    //   - coloringKey edited → rebuild that flight's track only
-    // We detect membership change vs key change and rebuild accordingly.
+    // The flights array, selection, or coloring changed. Only the truly
+    // expensive work (syncVisibility, syncHover, scales rebuild, primitive
+    // rebuilds) runs when the underlying structure shifted; routine score
+    // and terrain reactive updates short-circuit through the cheap path.
     syncFlights() {
       if (!this.viewer) return
 
       const present = new Set(this.flights.map(f => f.id))
-      const added   = []
       let removedAny = false
-
       for (const id of [...this.layers.keys()])
         if (!present.has(id)) {
           this.layers.get(id).detach(this.viewer)
@@ -145,20 +141,39 @@ export default {
           removedAny = true
         }
 
-      // Aggregate scales across all current flights. Used by every layer.
-      const bounds = aggregateBounds(this.flights)
-      const scales = {
-        climb:    buildScale('climb',    bounds),
-        altitude: buildScale('altitude', bounds),
-        tec:      buildScale('tec',      bounds),
-        speed:    buildScale('speed',    bounds),
-        time:     buildScale('time',     bounds),
-      }
+      // Detect structural changes vs. routine reactive updates (score
+      // arrival, terrain heights). Membership change → ids signature
+      // shifts. Selection, coloring, or any flight's hidden flag also
+      // count as structural since they affect visibility/sync passes.
+      const idsSig    = this.flights.map(f => f.id).join(',')
+      const hiddenSig = this.flights.map(f => f.hidden ? 1 : 0).join('')
+      const structural =
+        idsSig             != this._prevIdsSig    ||
+        hiddenSig          != this._prevHiddenSig ||
+        this.selectedId    != this._prevSelected  ||
+        this.primaryColoring != this._prevColoring
+      const addedAny = this.flights.some(f => !this.layers.has(f.id))
 
-      // If membership changed, all existing layers need a rebuild because
-      // the aggregate scales they were built against just shifted.
-      const rebuildAll = removedAny || this.flights.some(
-        f => !this.layers.has(f.id))
+      // Recompute aggregate scales only when the flight set membership
+      // changed (since per-flight bounds are immutable after parse).
+      if (idsSig != this._prevIdsSig || !this._scales) {
+        const bounds = aggregateBounds(this.flights)
+        this._scales = {
+          climb:    buildScale('climb',    bounds),
+          altitude: buildScale('altitude', bounds),
+          tec:      buildScale('tec',      bounds),
+          speed:    buildScale('speed',    bounds),
+          time:     buildScale('time',     bounds),
+        }
+      }
+      const scales = this._scales
+
+      // When membership changed, existing layers need rebuilding *only*
+      // if their coloring depends on the aggregate scales. Non-selected
+      // flights render with solid_color (scale-independent) so they're
+      // skipped here.
+      const rebuildAll = removedAny || addedAny
+      const added      = []
 
       for (const f of this.flights) {
         const wantKey = this.coloringFor(f)
@@ -170,17 +185,24 @@ export default {
           added.push(layer)
         } else {
           layer.scales = scales
-          if (rebuildAll || layer.coloringKey != wantKey)
+          const dependsOnScales = layer.coloringKey != 'solid_color'
+                               && layer.coloringKey != 'hidden'
+          if (layer.coloringKey != wantKey ||
+              (rebuildAll && dependsOnScales))
             layer.rebuildTrack(this.viewer, wantKey)
-          if (layer.flight.terrainHeights != f.terrainHeights) {
-            layer.flight = f
-            layer.rebuildShadowWall(this.viewer)
-          }
+          const terrainChanged = layer.flight.terrainHeights != f.terrainHeights
+          layer.flight = f
+          if (terrainChanged) layer.rebuildShadowWall(this.viewer)
         }
       }
 
-      this.syncVisibility()
-      this.syncHover()
+      // Hover and visibility passes are only necessary when structure
+      // (membership/selection/coloring) shifted. Routine score/terrain
+      // updates leave both unchanged.
+      if (structural) {
+        this.syncVisibility()
+        this.syncHover()
+      }
       if (added.length) this.flyToLayers(added)
 
       for (const f of this.flights)
@@ -188,6 +210,11 @@ export default {
           this.terrainSeen.add(f.id)
           this.sampleTerrainForFlight(f)
         }
+
+      this._prevIdsSig    = idsSig
+      this._prevHiddenSig = hiddenSig
+      this._prevSelected  = this.selectedId
+      this._prevColoring  = this.primaryColoring
     },
 
     // Sample terrain at ~500 evenly-spaced indices and linearly interpolate
@@ -256,9 +283,14 @@ export default {
 
     flyToSphere(sphere) {
       const pitch = this.mode2D ? -Cesium.Math.PI_OVER_TWO : CAMERA_PITCH
-      this.viewer.camera.flyToBoundingSphere(sphere, {
+      // range = 0 lets Cesium compute the distance needed to fit the
+      // whole sphere in view at the chosen heading/pitch. Cesium's auto
+      // fit is conservative; shrinking the input sphere tightens the
+      // resulting framing.
+      const tight = new Cesium.BoundingSphere(sphere.center, sphere.radius * 0.85)
+      this.viewer.camera.flyToBoundingSphere(tight, {
         duration: 1.0,
-        offset:   new Cesium.HeadingPitchRange(0, pitch, sphere.radius * 1.75),
+        offset:   new Cesium.HeadingPitchRange(0, pitch, 0),
       })
     },
 
@@ -306,7 +338,10 @@ export default {
       this.flyToAll()
     },
 
-    flyToAll() {this.flyToLayers([...this.layers.values()])},
+    flyToAll() {
+      const visible = [...this.layers.values()].filter(l => !l.flight.hidden)
+      this.flyToLayers(visible)
+    },
 
     flyToHover() {
       if (!this.hoverEntities.length) return
